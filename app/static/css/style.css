@@ -1,0 +1,110 @@
+:root {
+    /* Farben */
+    --color-dark:       #1a1d21;
+    --color-dark-soft:  #2a2f36;
+    --color-bg:         #f7f6f3;
+    --color-surface:    #ffffff;
+    --color-text:       #1a1d21;
+    --color-text-muted: #6b7280;
+    --color-accent:     #f59e0b;
+    --color-border:     #e5e3de;
+
+    /* Typografie */
+    --font-display: "Syne", system-ui, sans-serif;
+    --font-mono:    "DM Mono", "Consolas", monospace;
+
+    /* Abstände */
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 2rem;
+
+    --radius: 8px;
+}
+
+/* Zurücksetzen der Browser-Standardwerte */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-display);
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Navigationsleiste ---------------------------------------------------- */
+
+.navbar {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+}
+
+.coords {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-accent);
+}
+
+/* --- Inhaltsbereich ------------------------------------------------------- */
+
+.content {
+    flex: 1;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+h1 {
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+}
+
+.subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+/* --- Karten --------------------------------------------------------------- */
+
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+}
+
+.card h2 {
+    font-size: 1.1rem;
+    margin-bottom: var(--space-sm);
+}
+
+/* --- Fußzeile ------------------------------------------------------------- */
+
+.footer {
+    background: var(--color-dark-soft);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: var(--space-md);
+}

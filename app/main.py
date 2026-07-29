@@ -14,6 +14,9 @@ app = FastAPI(
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 @app.get("/health")
 def health() -> dict[str, str]:
