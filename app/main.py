@@ -4,6 +4,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from sqlalchemy import text
+from app.database import engine
+
 BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
@@ -20,7 +23,14 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        database_status = "ok"
+    except Exception as error:
+        database_status = f"nicht erreichbar: {type(error).__name__}"
+
+    return {"status": "ok", "database": database_status}
 
 
 @app.get("/", response_class=HTMLResponse)
