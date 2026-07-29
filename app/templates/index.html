@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · SolarPipeline{% endblock %}
+
+{% block content %}
+<h1>{{ plant_name }}</h1>
+<p class="subtitle">{{ capacity_w }} W Balkonkraftwerk · Neigung {{ tilt_deg }}° · Azimut {{ azimuth_deg }}°</p>
+
+<section class="card">
+    <h2>Systemstatus</h2>
+    <p>Die Anwendung läuft.</p>
+</section>
+{% endblock %}
