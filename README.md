@@ -11,3 +11,12 @@ Voraussetzung: Docker Desktop.
 ```bash
 cp .env.example .env
 docker compose up --build
+```
+
+## Endpunkte
+
+| Pfad | Zweck |
+|---|---|
+| `/` | Dashboard |
+| `/health` | Betriebszustand von Anwendung und Datenbank |
+| `/docs` | Automatisch erzeugte OpenAPI-Dokumentation |
