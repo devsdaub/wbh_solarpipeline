@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import text
 from app.database import engine
@@ -33,15 +34,18 @@ def health() -> dict[str, str]:
     return {"status": "ok", "database": database_status}
 
 
+from app.config import load_plant_config
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
+    plant = load_plant_config()
     return templates.TemplateResponse(
         request,
         "index.html",
         {
-            "plant_name": "Kleines Kraftwerk",
-            "capacity_w": 800,
-            "tilt_deg": 17,
-            "azimuth_deg": 203,
+            "plant_name": plant["name"],
+            "capacity_w": plant["panel"]["capacity_w"],
+            "tilt_deg": plant["panel"]["tilt_deg"],
+            "azimuth_deg": plant["panel"]["azimuth_deg"],
         },
     )
