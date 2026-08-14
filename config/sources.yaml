@@ -11,3 +11,11 @@ sources:
       - cloud_cover_mid
       - cloud_cover_high
       - visibility
+
+  open_meteo_air:
+    enabled: true
+    url: "https://air-quality-api.open-meteo.com/v1/air-quality"
+    default_days_back: 30
+    variables:
+      - dust
+      - pm10

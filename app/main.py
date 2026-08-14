@@ -84,11 +84,12 @@ def dashboard(request: Request):
             .limit(24)
         ).scalars().all()
 
-        total, first, last = session.execute(
+        total, first, last, max_dust = session.execute(
             select(
                 func.count(HourlyWeather.id),
                 func.min(HourlyWeather.timestamp),
                 func.max(HourlyWeather.timestamp),
+                func.max(HourlyWeather.dust),
             ).where(HourlyWeather.plant_id == plant.id)
         ).one()
 
@@ -104,5 +105,6 @@ def dashboard(request: Request):
             "total": total,
             "first": first,
             "last": last,
+            "max_dust": max_dust,
         },
     )

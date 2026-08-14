@@ -49,6 +49,7 @@ class SourceSettings(BaseModel):
 
 class SourcesSettings(BaseModel):
     open_meteo_weather: SourceSettings
+    open_meteo_air: SourceSettings
 
 
 def load_sources_config() -> SourcesSettings:

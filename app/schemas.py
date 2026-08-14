@@ -15,3 +15,14 @@ HOURLY_WEATHER_SCHEMA = pa.DataFrameSchema(
     strict=True,
     coerce=True,
 )
+
+HOURLY_AIR_SCHEMA = pa.DataFrameSchema(
+    {
+        "plant_id": pa.Column(int),
+        "timestamp": pa.Column("datetime64[ns, UTC]", unique=True),
+        "dust": pa.Column(float, pa.Check.ge(0), nullable=True),
+        "pm10": pa.Column(float, pa.Check.ge(0), nullable=True),
+    },
+    strict=True,
+    coerce=True,
+)

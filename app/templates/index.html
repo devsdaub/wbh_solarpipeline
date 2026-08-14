@@ -19,10 +19,14 @@
         <span class="stat-value">{{ last.strftime("%d.%m.%Y") if last else "n. v." }}</span>
         <span class="stat-label">Letzter Datenpunkt</span>
     </div>
+    <div class="stat">
+        <span class="stat-value">{{ "%.1f"|format(max_dust) if max_dust is not none else "n. v." }}</span>
+        <span class="stat-label">Max. Staub μg/m³</span>
+    </div>
 </section>
 
 <section class="card">
-    <h2>Wetterdaten, letzte 24 Stunden</h2>
+    <h2>Messwerte, letzte 24 Stunden</h2>
 
     {% if rows %}
     <div class="table-wrap">
@@ -33,6 +37,8 @@
                     <th class="num">GTI W/m²</th>
                     <th class="num">Temperatur °C</th>
                     <th class="num">Bewölkung %</th>
+                    <th class="num">Staub μg/m³</th>
+                    <th class="num">PM10 μg/m³</th>
                 </tr>
             </thead>
             <tbody>
@@ -42,6 +48,8 @@
                     <td class="mono num">{{ "%.0f"|format(row.gti) if row.gti is not none else "n. v." }}</td>
                     <td class="mono num">{{ "%.1f"|format(row.temperature) if row.temperature is not none else "n. v." }}</td>
                     <td class="mono num">{{ row.cloud_cover if row.cloud_cover is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(row.dust) if row.dust is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(row.pm10) if row.pm10 is not none else "n. v." }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -50,7 +58,7 @@
     {% else %}
     <p class="empty">
         Noch keine Daten vorhanden. Starte den Abruf über
-        <code>POST /api/ingest/weather</code> in der
+        <code>POST /api/ingest/all</code> in der
         <a href="/docs">API-Dokumentation</a>.
     </p>
     {% endif %}

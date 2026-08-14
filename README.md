@@ -56,4 +56,11 @@ Konfiguriert werden die Quellen in `config/sources.yaml`. Über das Feld
 ### Datenabruf auslösen
 
 ```bash
-curl -X POST http://localhost:8008/api/ingest/weather
+curl -X POST http://localhost:8008/api/ingest/all
+```
+
+| Quelle | Endpunkt | Status |
+|---|---|---|
+| Open-Meteo Wetterarchiv | `archive-api.open-meteo.com/v1/archive` | angebunden |
+| Open-Meteo Luftqualität | `air-quality-api.open-meteo.com/v1/air-quality` | angebunden |
+| Hoymiles (CSV-Import) | manueller Upload | geplant |
