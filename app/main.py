@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, text
 
+from app.api.routes import router as api_router
 from app.config import load_plant_config
 from app.database import Base, SessionLocal, engine
 from app.models import PlantConfig
@@ -40,7 +41,6 @@ def _seed_plant_config() -> None:
         plant.installation_date = settings.installation_date
         plant.acquisition_cost_eur = settings.economics.acquisition_cost_eur
         plant.subsidy_eur = settings.economics.subsidy_eur
-        
         session.commit()
 
 
@@ -52,8 +52,9 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(api_router)
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -66,8 +67,6 @@ def health() -> dict[str, str]:
 
     return {"status": "ok", "database": database_status}
 
-
-from app.config import load_plant_config
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):

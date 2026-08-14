@@ -9,4 +9,5 @@ class SourceAdapter(ABC):
     name: str
 
     @abstractmethod
-    def fetch(self, start: date, end: date) -> pd.DataFrame
+    def fetch(self, start: date, end: date) -> pd.DataFrame:
+        """Holt Rohdaten der Quelle für den angegebenen Zeitraum."""
