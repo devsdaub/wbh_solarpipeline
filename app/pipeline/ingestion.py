@@ -4,14 +4,21 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.adapters.open_meteo_air import OpenMeteoAirAdapter
 from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_plant_config, load_sources_config
 from app.database import SessionLocal
 from app.models import HourlyWeather, PlantConfig
 
+# Zuordnung des Quellennamens aus sources.yaml zur Adapterklasse
+ADAPTERS = {
+    "open_meteo_weather": OpenMeteoWeatherAdapter,
+    "open_meteo_air": OpenMeteoAirAdapter,
+}
+
 # Spalten, die bei einem erneuten Abruf überschrieben werden.
 # plant_id und timestamp fehlen bewusst, über sie wird die Zeile identifiziert.
-WEATHER_UPDATE_COLUMNS = (
+HOURLY_UPDATE_COLUMNS = (
     "gti",
     "temperature",
     "cloud_cover",
@@ -19,6 +26,8 @@ WEATHER_UPDATE_COLUMNS = (
     "cloud_cover_mid",
     "cloud_cover_high",
     "visibility",
+    "dust",
+    "pm10",
 )
 
 
@@ -37,13 +46,19 @@ def _to_records(frame: pd.DataFrame) -> list[dict]:
     return records
 
 
-def ingest_weather(start: date | None = None, end: date | None = None) -> dict:
-    """Holt Wetterdaten und schreibt sie in die Tabelle hourly_weather."""
+def ingest_source(
+    name: str, start: date | None = None, end: date | None = None
+) -> dict:
+    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather."""
+    if name not in ADAPTERS:
+        return {"status": "fehler", "grund": f"Unbekannte Quelle: {name}"}
+
     plant_settings = load_plant_config()
-    source = load_sources_config().open_meteo_weather
+    source = getattr(load_sources_config(), name)
 
     if not source.enabled:
-        return {"status": "uebersprungen", "grund": "Quelle ist deaktiviert"}
+        return {"status": "uebersprungen", "quelle": name,
+                "grund": "Quelle ist deaktiviert"}
 
     if end is None:
         end = date.today()
@@ -55,7 +70,7 @@ def ingest_weather(start: date | None = None, end: date | None = None) -> dict:
             select(PlantConfig).where(PlantConfig.name == plant_settings.name)
         ).scalar_one()
 
-        adapter = OpenMeteoWeatherAdapter(plant_settings, source, plant.id)
+        adapter = ADAPTERS[name](plant_settings, source, plant.id)
         frame = adapter.fetch(start, end)
         records = _to_records(frame)
 
@@ -64,7 +79,7 @@ def ingest_weather(start: date | None = None, end: date | None = None) -> dict:
             index_elements=["plant_id", "timestamp"],
             set_={
                 spalte: statement.excluded[spalte]
-                for spalte in WEATHER_UPDATE_COLUMNS
+                for spalte in HOURLY_UPDATE_COLUMNS
             },
         )
         session.execute(statement)
@@ -72,7 +87,12 @@ def ingest_weather(start: date | None = None, end: date | None = None) -> dict:
 
     return {
         "status": "ok",
-        "quelle": adapter.name,
+        "quelle": name,
         "zeitraum": f"{start} bis {end}",
         "datensaetze": len(records),
     }
+
+
+def ingest_all() -> list[dict]:
+    """Ruft alle konfigurierten Quellen nacheinander ab."""
+    return [ingest_source(name) for name in ADAPTERS]
