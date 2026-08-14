@@ -6,8 +6,53 @@
 <h1>{{ plant_name }}</h1>
 <p class="subtitle">{{ capacity_w }} W Balkonkraftwerk · Neigung {{ tilt_deg }}° · Azimut {{ azimuth_deg }}°</p>
 
+<section class="stats">
+    <div class="stat">
+        <span class="stat-value">{{ total }}</span>
+        <span class="stat-label">Stundenwerte</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ first.strftime("%d.%m.%Y") if first else "n. v." }}</span>
+        <span class="stat-label">Erster Datenpunkt</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ last.strftime("%d.%m.%Y") if last else "n. v." }}</span>
+        <span class="stat-label">Letzter Datenpunkt</span>
+    </div>
+</section>
+
 <section class="card">
-    <h2>Systemstatus</h2>
-    <p>Die Anwendung läuft.</p>
+    <h2>Wetterdaten, letzte 24 Stunden</h2>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Zeit (UTC)</th>
+                    <th class="num">GTI W/m²</th>
+                    <th class="num">Temperatur °C</th>
+                    <th class="num">Bewölkung %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td class="mono">{{ row.timestamp.strftime("%d.%m. %H:%M") }}</td>
+                    <td class="mono num">{{ "%.0f"|format(row.gti) if row.gti is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(row.temperature) if row.temperature is not none else "n. v." }}</td>
+                    <td class="mono num">{{ row.cloud_cover if row.cloud_cover is not none else "n. v." }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">
+        Noch keine Daten vorhanden. Starte den Abruf über
+        <code>POST /api/ingest/weather</code> in der
+        <a href="/docs">API-Dokumentation</a>.
+    </p>
+    {% endif %}
 </section>
 {% endblock %}

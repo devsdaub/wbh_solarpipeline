@@ -39,6 +39,7 @@ class DailyFact(Base):
 
 class HourlyWeather(Base):
     __tablename__ = "hourly_weather"
+    __table_args__ = (UniqueConstraint("plant_id", "timestamp"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))

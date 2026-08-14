@@ -5,11 +5,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
+from app.api.routes import router as api_router
 from app.config import load_plant_config
 from app.database import Base, SessionLocal, engine
-from app.models import PlantConfig
+from app.models import HourlyWeather, PlantConfig
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -40,7 +41,6 @@ def _seed_plant_config() -> None:
         plant.installation_date = settings.installation_date
         plant.acquisition_cost_eur = settings.economics.acquisition_cost_eur
         plant.subsidy_eur = settings.economics.subsidy_eur
-        
         session.commit()
 
 
@@ -52,8 +52,9 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(api_router)
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -67,11 +68,30 @@ def health() -> dict[str, str]:
     return {"status": "ok", "database": database_status}
 
 
-from app.config import load_plant_config
-
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     settings = load_plant_config()
+
+    with SessionLocal() as session:
+        plant = session.execute(
+            select(PlantConfig).where(PlantConfig.name == settings.name)
+        ).scalar_one()
+
+        rows = session.execute(
+            select(HourlyWeather)
+            .where(HourlyWeather.plant_id == plant.id)
+            .order_by(HourlyWeather.timestamp.desc())
+            .limit(24)
+        ).scalars().all()
+
+        total, first, last = session.execute(
+            select(
+                func.count(HourlyWeather.id),
+                func.min(HourlyWeather.timestamp),
+                func.max(HourlyWeather.timestamp),
+            ).where(HourlyWeather.plant_id == plant.id)
+        ).one()
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -80,5 +100,9 @@ def dashboard(request: Request):
             "capacity_w": settings.panel.capacity_w,
             "tilt_deg": settings.panel.tilt_deg,
             "azimuth_deg": settings.panel.azimuth_deg,
+            "rows": rows,
+            "total": total,
+            "first": first,
+            "last": last,
         },
     )

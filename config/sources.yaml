@@ -1,0 +1,13 @@
+sources:
+  open_meteo_weather:
+    enabled: true
+    url: "https://archive-api.open-meteo.com/v1/archive"
+    default_days_back: 30
+    variables:
+      - global_tilted_irradiance
+      - temperature_2m
+      - cloud_cover
+      - cloud_cover_low
+      - cloud_cover_mid
+      - cloud_cover_high
+      - visibility
