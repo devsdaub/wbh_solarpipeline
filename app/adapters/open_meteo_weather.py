@@ -13,7 +13,16 @@ COLUMN_MAP = {
 }
 
 
+def to_open_meteo_azimuth(azimuth_deg: float) -> float:
+    """
+    Anlagendaten sind Nord-basiert (0 = Nord, 180 = Süd, 270 = West).
+    Open-Meteo erwartet Süd-basierte Werte zwischen -180 und 180
+    """
+    return (azimuth_deg % 360) - 180
+
+
 class OpenMeteoWeatherAdapter(SourceAdapter):
+    """Liest stündliche Wetterdaten aus dem Open-Meteo-Archiv."""
 
     name = "open_meteo_weather"
 
@@ -30,9 +39,8 @@ class OpenMeteoWeatherAdapter(SourceAdapter):
             "end_date": end.isoformat(),
             "hourly": ",".join(self.source.variables),
             "tilt": self.plant.panel.tilt_deg,
-            "azimuth": self.plant.panel.azimuth_deg,
+            "azimuth": to_open_meteo_azimuth(self.plant.panel.azimuth_deg),
             "timezone": "UTC",
-            
         }
 
         response = httpx.get(self.source.url, params=params, timeout=30)
