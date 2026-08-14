@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -42,7 +42,7 @@ class HourlyWeather(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
-    timestamp: Mapped[datetime]
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     gti: Mapped[float | None]
     temperature: Mapped[float | None]
     cloud_cover: Mapped[int | None]
@@ -59,5 +59,5 @@ class PowerReading(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
-    timestamp: Mapped[datetime]
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     power_w: Mapped[int]
