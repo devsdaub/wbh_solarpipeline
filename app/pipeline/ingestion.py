@@ -16,19 +16,9 @@ ADAPTERS = {
     "open_meteo_air": OpenMeteoAirAdapter,
 }
 
-# Spalten, die bei einem erneuten Abruf überschrieben werden.
-# plant_id und timestamp fehlen bewusst, über sie wird die Zeile identifiziert.
-HOURLY_UPDATE_COLUMNS = (
-    "gti",
-    "temperature",
-    "cloud_cover",
-    "cloud_cover_low",
-    "cloud_cover_mid",
-    "cloud_cover_high",
-    "visibility",
-    "dust",
-    "pm10",
-)
+# Über diese Spalten wird eine Zeile identifiziert. Sie werden bei einem
+# erneuten Abruf nie überschrieben.
+KEY_COLUMNS = ("plant_id", "timestamp")
 
 
 def _to_records(frame: pd.DataFrame) -> list[dict]:
@@ -49,7 +39,12 @@ def _to_records(frame: pd.DataFrame) -> list[dict]:
 def ingest_source(
     name: str, start: date | None = None, end: date | None = None
 ) -> dict:
-    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather."""
+    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather.
+
+    Mehrere Quellen teilen sich dieselbe Tabelle. Deshalb überschreibt eine
+    Quelle beim erneuten Abruf ausschliesslich die Spalten, die sie selbst
+    liefert, und lässt die Werte der anderen Quellen unberührt.
+    """
     if name not in ADAPTERS:
         return {"status": "fehler", "grund": f"Unbekannte Quelle: {name}"}
 
@@ -74,12 +69,15 @@ def ingest_source(
         frame = adapter.fetch(start, end)
         records = _to_records(frame)
 
+        update_columns = [
+            spalte for spalte in frame.columns if spalte not in KEY_COLUMNS
+        ]
+
         statement = insert(HourlyWeather).values(records)
         statement = statement.on_conflict_do_update(
-            index_elements=["plant_id", "timestamp"],
+            index_elements=list(KEY_COLUMNS),
             set_={
-                spalte: statement.excluded[spalte]
-                for spalte in HOURLY_UPDATE_COLUMNS
+                spalte: statement.excluded[spalte] for spalte in update_columns
             },
         )
         session.execute(statement)
@@ -90,6 +88,7 @@ def ingest_source(
         "quelle": name,
         "zeitraum": f"{start} bis {end}",
         "datensaetze": len(records),
+        "spalten": update_columns,
     }
 
 
