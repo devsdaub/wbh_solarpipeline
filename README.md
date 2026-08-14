@@ -40,3 +40,20 @@ Star-Schema mit vier Tabellen:
 | `power_readings` | 20-Minuten-Leistungswerte aus dem Hoymiles-Inverter |
 
 Tabellen und Anlagenzeile entstehen automatisch beim Start
+
+
+## Datenquellen
+
+| Quelle | Endpunkt | Status |
+|---|---|---|
+| Open-Meteo Wetterarchiv | `archive-api.open-meteo.com/v1/archive` | angebunden |
+| Open-Meteo Luftqualität | `air-quality-api.open-meteo.com/v1/air-quality` | geplant |
+| Hoymiles (CSV-Import) | manueller Upload | geplant |
+
+Konfiguriert werden die Quellen in `config/sources.yaml`. Über das Feld
+`enabled` lässt sich jede Quelle einzeln abschalten, ohne Code zu ändern.
+
+### Datenabruf auslösen
+
+```bash
+curl -X POST http://localhost:8008/api/ingest/weather
