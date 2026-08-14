@@ -38,14 +38,14 @@ from app.config import load_plant_config
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    plant = load_plant_config()
+    settings = load_plant_config()
     return templates.TemplateResponse(
         request,
         "index.html",
         {
-            "plant_name": plant["name"],
-            "capacity_w": plant["panel"]["capacity_w"],
-            "tilt_deg": plant["panel"]["tilt_deg"],
-            "azimuth_deg": plant["panel"]["azimuth_deg"],
+            "plant_name": settings.name,
+            "capacity_w": settings.panel.capacity_w,
+            "tilt_deg": settings.panel.tilt_deg,
+            "azimuth_deg": settings.panel.azimuth_deg,
         },
     )
