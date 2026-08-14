@@ -24,23 +24,24 @@ async def lifespan(app: FastAPI):
 def _seed_plant_config() -> None:
     settings = load_plant_config()
     with SessionLocal() as session:
-        existing = session.execute(
+        plant = session.execute(
             select(PlantConfig).where(PlantConfig.name == settings.name)
         ).scalar_one_or_none()
 
-        if existing is None:
-            session.add(PlantConfig(
-                name=settings.name,
-                latitude=settings.location.latitude,
-                longitude=settings.location.longitude,
-                tilt_deg=settings.panel.tilt_deg,
-                azimuth_deg=settings.panel.azimuth_deg,
-                capacity_w=settings.panel.capacity_w,
-                installation_date=settings.installation_date,
-                acquisition_cost_eur=settings.economics.acquisition_cost_eur,
-                subsidy_eur=settings.economics.subsidy_eur,
-            ))
-            session.commit()
+        if plant is None:
+            plant = PlantConfig(name=settings.name)
+            session.add(plant)
+
+        plant.latitude = settings.location.latitude
+        plant.longitude = settings.location.longitude
+        plant.tilt_deg = settings.panel.tilt_deg
+        plant.azimuth_deg = settings.panel.azimuth_deg
+        plant.capacity_w = settings.panel.capacity_w
+        plant.installation_date = settings.installation_date
+        plant.acquisition_cost_eur = settings.economics.acquisition_cost_eur
+        plant.subsidy_eur = settings.economics.subsidy_eur
+        
+        session.commit()
 
 
 app = FastAPI(
