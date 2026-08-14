@@ -5,6 +5,7 @@ import pandas as pd
 
 from app.adapters.base import SourceAdapter
 from app.config import PlantSettings, SourceSettings
+from app.schemas import HOURLY_WEATHER_SCHEMA
 
 COLUMN_MAP = {
     "time": "timestamp",
@@ -51,4 +52,4 @@ class OpenMeteoWeatherAdapter(SourceAdapter):
         frame["time"] = pd.to_datetime(frame["time"]).dt.tz_localize("UTC")
         frame = frame.rename(columns=COLUMN_MAP)
         frame["plant_id"] = self.plant_id
-        return frame
+        return HOURLY_WEATHER_SCHEMA.validate(frame)
