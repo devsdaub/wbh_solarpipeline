@@ -38,3 +38,20 @@ def load_plant_config() -> PlantSettings:
     path = CONFIG_DIR / "plant.yaml"
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     return PlantSettings.model_validate(raw["plant"])
+
+
+class SourceSettings(BaseModel):
+    enabled: bool
+    url: str
+    default_days_back: int
+    variables: list[str]
+
+
+class SourcesSettings(BaseModel):
+    open_meteo_weather: SourceSettings
+
+
+def load_sources_config() -> SourcesSettings:
+    path = CONFIG_DIR / "sources.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return SourcesSettings.model_validate(raw["sources"])
