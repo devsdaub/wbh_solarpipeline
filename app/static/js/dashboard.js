@@ -51,13 +51,40 @@ function zeichneZeitreihe(daten) {
     });
 }
 
+function aktualisiereZeitreihe(daten) {
+    zeitreihe.data.labels = daten.labels;
+    zeitreihe.data.datasets[0].data = daten.produktion;
+    zeitreihe.data.datasets[1].data = daten.einstrahlung;
+    zeitreihe.update();
+}
+
+async function wechsleZeitraum(tage, knopf) {
+    document.querySelectorAll(".zeitraum-knopf").forEach((element) => {
+        element.classList.remove("aktiv");
+    });
+    knopf.classList.add("aktiv");
+
+    document.getElementById("zeitraum-titel").textContent =
+        knopf.dataset.titel;
+
+    const daten = await ladeDaten(tage);
+    aktualisiereZeitreihe(daten);
+}
+
 async function start() {
     try {
         const daten = await ladeDaten(90);
         zeichneZeitreihe(daten);
     } catch (fehler) {
         console.error(fehler);
+        return;
     }
+
+    document.querySelectorAll(".zeitraum-knopf").forEach((knopf) => {
+        knopf.addEventListener("click", () => {
+            wechsleZeitraum(Number(knopf.dataset.tage), knopf).catch(console.error);
+        });
+    });
 }
 
 start();

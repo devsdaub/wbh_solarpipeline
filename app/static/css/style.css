@@ -251,3 +251,45 @@ h1 {
     height: 300px;
     width: 100%;
 }
+
+
+/* --- Kartenkopf mit Bedienelementen ---------------------------------------- */
+
+.card-kopf {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.card-kopf h2 {
+    margin-bottom: 0;
+}
+
+.knopfleiste {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.zeitraum-knopf {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.3rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+}
+
+.zeitraum-knopf:hover {
+    border-color: var(--color-accent);
+}
+
+.zeitraum-knopf.aktiv {
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: var(--color-bg);
+}

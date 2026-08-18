@@ -32,7 +32,14 @@
 </section>
 
 <section class="card">
-    <h2>Verlauf, letzte 90 Tage</h2>
+    <div class="card-kopf">
+        <h2 id="zeitraum-titel">Verlauf, letzte 90 Tage</h2>
+        <div class="knopfleiste">
+            <button class="zeitraum-knopf" data-tage="30" data-titel="Verlauf, letzte 30 Tage">30 T</button>
+            <button class="zeitraum-knopf aktiv" data-tage="90" data-titel="Verlauf, letzte 90 Tage">90 T</button>
+            <button class="zeitraum-knopf" data-tage="365" data-titel="Verlauf, letztes Jahr">1 J</button>
+        </div>
+    </div>
     <div class="chart-box">
         <canvas id="chart-zeitreihe"></canvas>
     </div>
