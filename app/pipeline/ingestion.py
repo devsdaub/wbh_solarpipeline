@@ -12,6 +12,7 @@ from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_plant_config, load_sources_config
 from app.database import SessionLocal
 from app.models import DailyFact, HourlyWeather, PlantConfig
+from app.pipeline.util import to_records
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ ADAPTERS = {
 KEY_COLUMNS = ("plant_id", "timestamp")
 
 
-def _to_records(frame: pd.DataFrame) -> list[dict]:
+def to_records(frame: pd.DataFrame) -> list[dict]:
     """Wandelt ein DataFrame in Datensätze um, pandas-Fehlwerte werden zu None."""
     records = frame.to_dict(orient="records")
     for record in records:
@@ -65,7 +66,7 @@ def ingest_source(
 
         adapter = ADAPTERS[name](plant_settings, source, plant_id)
         frame = adapter.fetch(start, end)
-        records = _to_records(frame)
+        records = to_records(frame)
 
         update_columns = [
             spalte for spalte in frame.columns if spalte not in KEY_COLUMNS
@@ -90,9 +91,9 @@ def ingest_source(
     }
 
 
-def ingest_all() -> list[dict]:
-    """Ruft alle konfigurierten Quellen nacheinander ab."""
-    return [ingest_source(name) for name in ADAPTERS]
+def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]:
+    """Ruft alle konfigurierten Quellen für denselben Zeitraum ab."""
+    return [ingest_source(name, start, end) for name in ADAPTERS]
 
 
 def import_energy_report(path: Path) -> dict:
@@ -102,7 +103,7 @@ def import_energy_report(path: Path) -> dict:
 
         adapter = HoymilesEnergyAdapter()
         frame = adapter.parse(path, plant_id)
-        records = _to_records(frame)
+        records = to_records(frame)
 
         statement = insert(DailyFact).values(records)
         statement = statement.on_conflict_do_update(
@@ -123,4 +124,25 @@ def import_energy_report(path: Path) -> dict:
         "zeitraum": f"{frame['date'].min().date()} bis {frame['date'].max().date()}",
         "kalendertage": len(kalender),
         "fehlende_tage": len(fehlend),
+    }
+
+
+def run_pipeline(start: date | None = None, end: date | None = None) -> dict:
+    """Ruft alle Quellen ab und verdichtet anschliessend auf Tageswerte."""
+    # lokal importiert, sonst Zirkelbezug mit transformation.py
+    from app.pipeline.transformation import aggregate_daily, find_production_gaps
+
+    quellen = ingest_all(start, end)
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+    aggregation = aggregate_daily(plant_id)
+    luecken = find_production_gaps(plant_id)
+
+    return {
+        "status": "ok",
+        "quellen": quellen,
+        "aggregation": aggregation,
+        "datenqualitaet": luecken,
     }

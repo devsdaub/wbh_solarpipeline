@@ -100,3 +100,26 @@ Liefert der Export eine Leistungsangabe mit, wird sie gegen
 `module_capacity_wp` aus `config/plant.yaml` geprüft. Die Einheit
 unterscheidet sich je nach Variante (Watt oder Kilowatt) und wird
 umgerechnet. Eine Abweichung erzeugt eine Warnung, aber keinen Abbruch.
+
+
+## Transformation
+
+Die Stundenwerte aus `hourly_weather` werden mit pandas zu Tageswerten in
+`daily_facts` verdichtet (`app/pipeline/transformation.py`):
+
+| Zielspalte | Berechnung |
+|---|---|
+| `gti_kwh` | Summe der Stundenwerte geteilt durch 1000 (W/m² → kWh/m²) |
+| `avg_temperature` | Tagesmittel |
+| `avg_cloud_cover` | gerundetes Tagesmittel |
+| `max_dust` | Tagesmaximum |
+| `avg_pm10` | Tagesmittel |
+| `eq` | `production_kwh / (gti_kwh × module_capacity_kwp)` |
+
+Die Aggregation ist als reine Funktion auf DataFrames umgesetzt
+(`aggregate_hourly`, `berechne_eq`, `finde_luecken`) und dadurch ohne
+laufende Datenbank testbar. Das Laden und Schreiben ist davon getrennt.
+
+Bei Summen wird `min_count=1` gesetzt. Ohne diese Angabe liefert pandas
+für einen Tag ohne jeden Messwert die Summe 0 statt eines Fehlwerts, was
+eine fehlende Messung fälschlich als "keine Einstrahlung" ausweisen würde.

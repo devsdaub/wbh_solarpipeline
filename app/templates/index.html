@@ -14,20 +14,20 @@
 
 <section class="stats">
     <div class="stat">
-        <span class="stat-value">{{ total }}</span>
-        <span class="stat-label">Stundenwerte</span>
+        <span class="stat-value">{{ tage_gesamt }}</span>
+        <span class="stat-label">Tage in daily_facts</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ tage_produktion }}</span>
-        <span class="stat-label">Tage Produktion</span>
+        <span class="stat-value">{{ stunden }}</span>
+        <span class="stat-label">Stundenwerte</span>
     </div>
     <div class="stat">
         <span class="stat-value">{{ "%.0f"|format(summe_kwh) if summe_kwh else "n. v." }}</span>
         <span class="stat-label">kWh gesamt</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ "%.1f"|format(max_dust) if max_dust is not none else "n. v." }}</span>
-        <span class="stat-label">Max. Staub μg/m³</span>
+        <span class="stat-value">{{ "%.2f"|format(eq_mittel) if eq_mittel else "n. v." }}</span>
+        <span class="stat-label">Ø Effizienzquotient</span>
     </div>
 </section>
 
@@ -41,7 +41,7 @@
 </section>
 
 <section class="card">
-    <h2>Produktion, letzte 14 Tage mit Daten</h2>
+    <h2>Tageswerte, letzte 21 Tage</h2>
 
     {% if tage %}
     <div class="table-wrap">
@@ -50,6 +50,11 @@
                 <tr>
                     <th>Datum</th>
                     <th class="num">Produktion kWh</th>
+                    <th class="num">GTI kWh/m²</th>
+                    <th class="num">Temperatur °C</th>
+                    <th class="num">Bewölkung %</th>
+                    <th class="num">Staub μg/m³</th>
+                    <th class="num">EQ</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,41 +62,11 @@
                 <tr>
                     <td class="mono">{{ tag.date.strftime("%d.%m.%Y") }}</td>
                     <td class="mono num">{{ "%.2f"|format(tag.production_kwh) if tag.production_kwh is not none else "n. v." }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p class="empty">Noch keine Produktionsdaten. Lade oben einen Energy-Report hoch.</p>
-    {% endif %}
-</section>
-
-<section class="card">
-    <h2>Messwerte, letzte 24 Stunden</h2>
-
-    {% if rows %}
-    <div class="table-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Zeit (UTC)</th>
-                    <th class="num">GTI W/m²</th>
-                    <th class="num">Temperatur °C</th>
-                    <th class="num">Bewölkung %</th>
-                    <th class="num">Staub μg/m³</th>
-                    <th class="num">PM10 μg/m³</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                <tr>
-                    <td class="mono">{{ row.timestamp.strftime("%d.%m. %H:%M") }}</td>
-                    <td class="mono num">{{ "%.0f"|format(row.gti) if row.gti is not none else "n. v." }}</td>
-                    <td class="mono num">{{ "%.1f"|format(row.temperature) if row.temperature is not none else "n. v." }}</td>
-                    <td class="mono num">{{ row.cloud_cover if row.cloud_cover is not none else "n. v." }}</td>
-                    <td class="mono num">{{ "%.1f"|format(row.dust) if row.dust is not none else "n. v." }}</td>
-                    <td class="mono num">{{ "%.1f"|format(row.pm10) if row.pm10 is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.gti_kwh) if tag.gti_kwh is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(tag.avg_temperature) if tag.avg_temperature is not none else "n. v." }}</td>
+                    <td class="mono num">{{ tag.avg_cloud_cover if tag.avg_cloud_cover is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(tag.max_dust) if tag.max_dust is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.eq) if tag.eq is not none else "n. v." }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -99,8 +74,8 @@
     </div>
     {% else %}
     <p class="empty">
-        Noch keine Wetterdaten. Starte den Abruf über
-        <code>POST /api/ingest/all</code> in der
+        Noch keine Tageswerte. Starte den vollständigen Durchlauf über
+        <code>POST /api/pipeline/run</code> in der
         <a href="/docs">API-Dokumentation</a>.
     </p>
     {% endif %}
