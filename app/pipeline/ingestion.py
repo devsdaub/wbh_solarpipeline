@@ -90,9 +90,9 @@ def ingest_source(
     }
 
 
-def ingest_all() -> list[dict]:
-    """Ruft alle konfigurierten Quellen nacheinander ab."""
-    return [ingest_source(name) for name in ADAPTERS]
+def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]:
+    """Ruft alle konfigurierten Quellen für denselben Zeitraum ab."""
+    return [ingest_source(name, start, end) for name in ADAPTERS]
 
 
 def import_energy_report(path: Path) -> dict:
