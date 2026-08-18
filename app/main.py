@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,10 +12,8 @@ from app.api.routes import router as api_router
 from app.api.upload import router as upload_router
 from app.config import load_plant_config
 from app.database import Base, SessionLocal, engine
-from app.models import DailyFact, HourlyWeather, PlantConfig
+from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.scheduler import start_scheduler, stop_scheduler
-
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -107,6 +106,10 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             ).where(DailyFact.plant_id == plant.id)
         ).one()
 
+        letzter_lauf = session.execute(
+            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(1)
+        ).scalar_one_or_none()
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -120,6 +123,7 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "tage_gesamt": tage_gesamt,
             "summe_kwh": summe_kwh,
             "eq_mittel": eq_mittel,
+            "letzter_lauf": letzter_lauf,
             "upload": upload,
             "zeilen": zeilen,
         },

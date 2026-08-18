@@ -32,6 +32,26 @@
 </section>
 
 <section class="card">
+    <h2>Pipeline</h2>
+    {% if letzter_lauf %}
+    <p class="subtitle">
+        Letzter Lauf {{ letzter_lauf.started_at.strftime("%d.%m.%Y %H:%M") }} UTC
+        · Auslöser {{ letzter_lauf.trigger }}
+        · Status <strong>{{ letzter_lauf.status }}</strong>
+        {% if letzter_lauf.days %}· {{ letzter_lauf.days }} Tage verarbeitet{% endif %}
+    </p>
+    {% if letzter_lauf.error %}
+    <div class="hinweis hinweis-fehler">{{ letzter_lauf.error }}</div>
+    {% endif %}
+    {% else %}
+    <p class="empty">Noch kein Lauf protokolliert.</p>
+    {% endif %}
+    <form action="/api/pipeline/run" method="post" class="upload-form">
+        <button type="submit">Jetzt ausführen</button>
+    </form>
+</section>
+
+<section class="card">
     <h2>Hoymiles-Export importieren</h2>
     <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
         <input type="file" name="file" accept=".csv" required>

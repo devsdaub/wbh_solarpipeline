@@ -123,3 +123,16 @@ laufende Datenbank testbar. Das Laden und Schreiben ist davon getrennt.
 Bei Summen wird `min_count=1` gesetzt. Ohne diese Angabe liefert pandas
 für einen Tag ohne jeden Messwert die Summe 0 statt eines Fehlwerts, was
 eine fehlende Messung fälschlich als "keine Einstrahlung" ausweisen würde.
+
+## Scheduler
+
+Die Pipeline läuft automatisch im Hintergrund. Konfiguration in
+`config/scheduler.yaml`:
+
+```yaml
+scheduler:
+  enabled: true
+  jobs:
+    pipeline:
+      interval_minutes: 180
+      enabled: true
