@@ -1,5 +1,5 @@
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -11,7 +11,7 @@ from app.adapters.open_meteo_air import OpenMeteoAirAdapter
 from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_plant_config, load_sources_config
 from app.database import SessionLocal
-from app.models import DailyFact, HourlyWeather, PlantConfig
+from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.util import to_records
 
 logger = logging.getLogger(__name__)
@@ -117,22 +117,66 @@ def import_energy_report(path: Path) -> dict:
     }
 
 
-def run_pipeline(start: date | None = None, end: date | None = None) -> dict:
+def run_pipeline(
+    start: date | None = None,
+    end: date | None = None,
+    trigger: str = "manuell",
+) -> dict:
     """Ruft alle Quellen ab und verdichtet anschliessend auf Tageswerte."""
     # lokal importiert, sonst Zirkelbezug mit transformation.py
     from app.pipeline.transformation import aggregate_daily, find_production_gaps
 
-    quellen = ingest_all(start, end)
-
+    lauf = PipelineRun(
+        started_at=datetime.now(timezone.utc),
+        trigger=trigger,
+        status="laeuft",
+    )
     with SessionLocal() as session:
-        plant_id = _current_plant_id(session)
+        session.add(lauf)
+        session.commit()
+        lauf_id = lauf.id
 
-    aggregation = aggregate_daily(plant_id)
-    luecken = find_production_gaps(plant_id)
+    try:
+        quellen = ingest_all(start, end)
 
-    return {
-        "status": "ok",
-        "quellen": quellen,
-        "aggregation": aggregation,
-        "datenqualitaet": luecken,
-    }
+        with SessionLocal() as session:
+            plant_id = _current_plant_id(session)
+
+        aggregation = aggregate_daily(plant_id)
+        luecken = find_production_gaps(plant_id)
+
+        ergebnis = {
+            "status": "ok",
+            "quellen": quellen,
+            "aggregation": aggregation,
+            "datenqualitaet": luecken,
+        }
+        _lauf_abschliessen(
+            lauf_id,
+            status="ok",
+            records=sum(q.get("datensaetze", 0) for q in quellen),
+            days=aggregation.get("geschriebene_tage"),
+        )
+        return ergebnis
+
+    except Exception as fehler:
+        logger.exception("Pipeline-Lauf fehlgeschlagen")
+        _lauf_abschliessen(lauf_id, status="fehler", error=str(fehler)[:2000])
+        raise
+
+
+def _lauf_abschliessen(
+    lauf_id: int,
+    status: str,
+    records: int | None = None,
+    days: int | None = None,
+    error: str | None = None,
+) -> None:
+    with SessionLocal() as session:
+        lauf = session.get(PipelineRun, lauf_id)
+        lauf.finished_at = datetime.now(timezone.utc)
+        lauf.status = status
+        lauf.records = records
+        lauf.days = days
+        lauf.error = error
+        session.commit()
