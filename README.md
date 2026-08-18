@@ -47,8 +47,9 @@ Tabellen und Anlagenzeile entstehen automatisch beim Start
 | Quelle | Endpunkt | Status |
 |---|---|---|
 | Open-Meteo Wetterarchiv | `archive-api.open-meteo.com/v1/archive` | angebunden |
-| Open-Meteo Luftqualität | `air-quality-api.open-meteo.com/v1/air-quality` | geplant |
-| Hoymiles (CSV-Import) | manueller Upload | geplant |
+| Open-Meteo Luftqualität | `air-quality-api.open-meteo.com/v1/air-quality` | angebunden |
+| Hoymiles Energy-Report | CSV-Upload über das Dashboard | angebunden |
+| Hoymiles Power-Report | CSV-Upload, 20-Minuten-Werte | offen |
 
 Konfiguriert werden die Quellen in `config/sources.yaml`. Über das Feld
 `enabled` lässt sich jede Quelle einzeln abschalten, ohne Code zu ändern.
@@ -64,3 +65,38 @@ curl -X POST http://localhost:8008/api/ingest/all
 | Open-Meteo Wetterarchiv | `archive-api.open-meteo.com/v1/archive` | angebunden |
 | Open-Meteo Luftqualität | `air-quality-api.open-meteo.com/v1/air-quality` | angebunden |
 | Hoymiles (CSV-Import) | manueller Upload | geplant |
+
+
+## Hoymiles-Import
+
+Der Energy-Report wird über das Formular auf der Startseite hochgeladen
+oder über `POST /api/upload/energy`. Ein erneuter Import desselben
+Zeitraums aktualisiert die vorhandenen Tageswerte.
+
+### Umgang mit Formatvarianten
+
+Das Hoymiles-Portal hat sein Exportformat während der Projektlaufzeit
+geändert:
+
+Beobachtete Varianten:
+
+| | Variante 1 | Variante 2 | Variante 3 (aktuell) |
+|---|---|---|---|
+| Datumsspalte | `Date` | `Time` | `Time` |
+| Leistungsangabe | keine | `Rated Power (W)` | `Capacity (kW)` |
+| Verbrauch | `Consumption (kWh)` | entfällt | `Consumption (kWh)` |
+| Zusatzspalten | keine | `Model`, `SN` | `Plant Creation Time` |
+| Messwert | `Production (kWh)` | `Production (kWh)` | `Production (kWh)` |
+
+Der Adapter übernimmt gezielt die Datums- und die Produktionsspalte, statt
+bekannte Störspalten zu entfernen. Beide Datumsschreibweisen werden
+akzeptiert. Alle nicht übernommenen Spalten werden protokolliert und sind
+im Containerlog nachvollziehbar.
+
+Fehlt die Spalte `Production (kWh)`, bricht der Import mit einer
+verständlichen Meldung ab, statt leere Daten zu schreiben.
+
+Liefert der Export eine Leistungsangabe mit, wird sie gegen
+`module_capacity_wp` aus `config/plant.yaml` geprüft. Die Einheit
+unterscheidet sich je nach Variante (Watt oder Kilowatt) und wird
+umgerechnet. Eine Abweichung erzeugt eine Warnung, aber keinen Abbruch.

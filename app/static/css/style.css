@@ -185,3 +185,54 @@ h1 {
     color: var(--color-text-muted);
     font-size: 0.9rem;
 }
+
+/* --- Hinweise nach einer Aktion -------------------------------------------- */
+
+.hinweis {
+    padding: var(--space-md);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-md);
+    font-size: 0.9rem;
+    border-left: 3px solid;
+}
+
+.hinweis-ok {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+}
+
+.hinweis-fehler {
+    background: var(--color-surface);
+    border-color: #dc2626;
+}
+
+/* --- Upload-Formular ------------------------------------------------------- */
+
+.upload-form {
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--space-sm);
+}
+
+.upload-form input[type="file"] {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.upload-form button {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    padding: var(--space-sm) var(--space-lg);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.upload-form button:hover {
+    background: var(--color-dark-soft);
+}

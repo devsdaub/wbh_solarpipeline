@@ -8,12 +8,21 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select, text
 
 from app.api.routes import router as api_router
+from app.api.upload import router as upload_router
 from app.config import load_plant_config
 from app.database import Base, SessionLocal, engine
-from app.models import HourlyWeather, PlantConfig
+from app.models import DailyFact, HourlyWeather, PlantConfig
+
 
 BASE_DIR = Path(__file__).resolve().parent
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,7 +63,7 @@ app = FastAPI(
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)
-
+app.include_router(upload_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -69,7 +78,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request):
+def dashboard(request: Request, upload: str | None = None, zeilen: int | None = None):
     settings = load_plant_config()
 
     with SessionLocal() as session:
@@ -84,13 +93,26 @@ def dashboard(request: Request):
             .limit(24)
         ).scalars().all()
 
-        total, first, last, max_dust = session.execute(
+        total, max_dust = session.execute(
             select(
                 func.count(HourlyWeather.id),
-                func.min(HourlyWeather.timestamp),
-                func.max(HourlyWeather.timestamp),
                 func.max(HourlyWeather.dust),
             ).where(HourlyWeather.plant_id == plant.id)
+        ).one()
+
+        tage = session.execute(
+            select(DailyFact)
+            .where(DailyFact.plant_id == plant.id)
+            .where(DailyFact.production_kwh.is_not(None))
+            .order_by(DailyFact.date.desc())
+            .limit(14)
+        ).scalars().all()
+
+        tage_produktion, summe_kwh = session.execute(
+            select(
+                func.count(DailyFact.id),
+                func.sum(DailyFact.production_kwh),
+            ).where(DailyFact.plant_id == plant.id)
         ).one()
 
     return templates.TemplateResponse(
@@ -103,8 +125,11 @@ def dashboard(request: Request):
             "azimuth_deg": settings.panel.azimuth_deg,
             "rows": rows,
             "total": total,
-            "first": first,
-            "last": last,
             "max_dust": max_dust,
+            "tage": tage,
+            "tage_produktion": tage_produktion,
+            "summe_kwh": summe_kwh,
+            "upload": upload,
+            "zeilen": zeilen,
         },
     )

@@ -26,6 +26,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./config:/app/config
+      - ./uploads:/app/uploads
     environment:
       WATCHFILES_FORCE_POLLING: "true"
       DATABASE_URL: postgresql+psycopg2://solar:${DB_PASSWORD}@db:5432/solarpipeline

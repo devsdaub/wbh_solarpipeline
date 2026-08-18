@@ -16,6 +16,7 @@ class Location(BaseModel):
 
 class Panel(BaseModel):
     capacity_w: int
+    module_capacity_wp: int
     tilt_deg: int
     azimuth_deg: int
 
