@@ -32,6 +32,13 @@
 </section>
 
 <section class="card">
+    <h2>Verlauf, letzte 90 Tage</h2>
+    <div class="chart-box">
+        <canvas id="chart-zeitreihe"></canvas>
+    </div>
+</section>
+
+<section class="card">
     <h2>Pipeline</h2>
     {% if letzter_lauf %}
     <p class="subtitle">
@@ -100,4 +107,8 @@
     </p>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
 {% endblock %}

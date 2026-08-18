@@ -236,3 +236,18 @@ h1 {
 .upload-form button:hover {
     background: var(--color-dark-soft);
 }
+
+
+/* --- Diagramme ------------------------------------------------------------- */
+
+.chart-box {
+    position: relative;
+    height: 340px;
+    width: 100%;
+}
+
+.chart-box-klein {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
