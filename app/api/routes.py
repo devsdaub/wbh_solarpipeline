@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter
 
 from app.pipeline.ingestion import ingest_all, ingest_source
-from app.pipeline.transformation import aggregate_daily
+from app.pipeline.transformation import aggregate_daily, find_production_gaps
 from app.database import SessionLocal
 from app.pipeline.ingestion import _current_plant_id
 
@@ -43,3 +43,11 @@ def trigger_daily_aggregation() -> dict:
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
     return aggregate_daily(plant_id)
+
+
+@router.get("/quality/gaps")
+def report_production_gaps() -> dict:
+    """Meldet Lücken in den Produktionsdaten innerhalb des Messzeitraums."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return find_production_gaps(plant_id)

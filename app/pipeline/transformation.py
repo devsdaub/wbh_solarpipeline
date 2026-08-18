@@ -93,3 +93,41 @@ def aggregate_daily(plant_id: int) -> dict:
 
     logger.info("Tagesaggregation abgeschlossen: %s Tage", len(taeglich))
     return {"status": "ok", "geschriebene_tage": len(taeglich)}
+
+
+def finde_luecken(frame: pd.DataFrame) -> list[dict]:
+    """Fasst Tage ohne Produktionswert zu zusammenhängenden Blöcken zusammen."""
+    gemessen = frame.dropna(subset=["production_kwh"])
+    if gemessen.empty:
+        return []
+
+    im_zeitraum = frame[
+        frame["date"].between(gemessen["date"].min(), gemessen["date"].max())
+    ]
+    tage = sorted(im_zeitraum[im_zeitraum["production_kwh"].isna()]["date"])
+    if not tage:
+        return []
+
+    luecken = []
+    beginn = vorher = tage[0]
+    for tag in tage[1:]:
+        if (tag - vorher).days == 1:
+            vorher = tag
+        else:
+            luecken.append({"von": beginn, "bis": vorher,
+                            "tage": (vorher - beginn).days + 1})
+            beginn = vorher = tag
+    luecken.append({"von": beginn, "bis": vorher,
+                    "tage": (vorher - beginn).days + 1})
+    return luecken
+
+
+def find_production_gaps(plant_id: int) -> dict:
+    """Findet Tage ohne Produktionswert innerhalb des Messzeitraums."""
+    luecken = finde_luecken(_lade_produktion(plant_id))
+    fehlend = sum(luecke["tage"] for luecke in luecken)
+
+    if fehlend:
+        logger.warning("Produktionslücken: %s Tage in %s Block/Blöcken",
+                       fehlend, len(luecken))
+    return {"fehlende_tage": fehlend, "luecken": luecken}
