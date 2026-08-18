@@ -1,33 +1,30 @@
+import logging
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.adapters.hoymiles_csv import HoymilesEnergyAdapter
 from app.adapters.open_meteo_air import OpenMeteoAirAdapter
 from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_plant_config, load_sources_config
 from app.database import SessionLocal
-from app.models import HourlyWeather, PlantConfig
+from app.models import DailyFact, HourlyWeather, PlantConfig
 
-# Zuordnung des Quellennamens aus sources.yaml zur Adapterklasse
+logger = logging.getLogger(__name__)
+
 ADAPTERS = {
     "open_meteo_weather": OpenMeteoWeatherAdapter,
     "open_meteo_air": OpenMeteoAirAdapter,
 }
 
-# Über diese Spalten wird eine Zeile identifiziert. Sie werden bei einem
-# erneuten Abruf nie überschrieben.
 KEY_COLUMNS = ("plant_id", "timestamp")
 
 
 def _to_records(frame: pd.DataFrame) -> list[dict]:
-    """Wandelt ein DataFrame in Datensätze für die Datenbank um.
-
-    pandas nutzt NaN und NA als Fehlwerte. Beide sind keine Python-None-Werte
-    und würden von PostgreSQL nicht als NULL, sondern als Zahlenwert NaN
-    gespeichert. Deshalb werden sie hier ausdrücklich ersetzt.
-    """
+    """Wandelt ein DataFrame in Datensätze um, pandas-Fehlwerte werden zu None."""
     records = frame.to_dict(orient="records")
     for record in records:
         for key, value in record.items():
@@ -36,15 +33,18 @@ def _to_records(frame: pd.DataFrame) -> list[dict]:
     return records
 
 
+def _current_plant_id(session) -> int:
+    """Liefert die id der konfigurierten Anlage."""
+    settings = load_plant_config()
+    return session.execute(
+        select(PlantConfig).where(PlantConfig.name == settings.name)
+    ).scalar_one().id
+
+
 def ingest_source(
     name: str, start: date | None = None, end: date | None = None
 ) -> dict:
-    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather.
-
-    Mehrere Quellen teilen sich dieselbe Tabelle. Deshalb überschreibt eine
-    Quelle beim erneuten Abruf ausschliesslich die Spalten, die sie selbst
-    liefert, und lässt die Werte der anderen Quellen unberührt.
-    """
+    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather."""
     if name not in ADAPTERS:
         return {"status": "fehler", "grund": f"Unbekannte Quelle: {name}"}
 
@@ -61,11 +61,9 @@ def ingest_source(
         start = end - timedelta(days=source.default_days_back)
 
     with SessionLocal() as session:
-        plant = session.execute(
-            select(PlantConfig).where(PlantConfig.name == plant_settings.name)
-        ).scalar_one()
+        plant_id = _current_plant_id(session)
 
-        adapter = ADAPTERS[name](plant_settings, source, plant.id)
+        adapter = ADAPTERS[name](plant_settings, source, plant_id)
         frame = adapter.fetch(start, end)
         records = _to_records(frame)
 
@@ -95,3 +93,29 @@ def ingest_source(
 def ingest_all() -> list[dict]:
     """Ruft alle konfigurierten Quellen nacheinander ab."""
     return [ingest_source(name) for name in ADAPTERS]
+
+
+def import_energy_report(path: Path) -> dict:
+    """Liest einen Hoymiles-Energy-Report ein und schreibt ihn nach daily_facts."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+        adapter = HoymilesEnergyAdapter()
+        frame = adapter.parse(path, plant_id)
+        records = _to_records(frame)
+
+        session.add_all([DailyFact(**record) for record in records])
+        session.commit()
+
+    kalender = pd.date_range(frame["date"].min(), frame["date"].max(), freq="D")
+    fehlend = kalender.difference(frame["date"])
+
+    return {
+        "status": "ok",
+        "quelle": adapter.name,
+        "datei": path.name,
+        "datensaetze": len(records),
+        "zeitraum": f"{frame['date'].min().date()} bis {frame['date'].max().date()}",
+        "kalendertage": len(kalender),
+        "fehlende_tage": len(fehlend),
+    }
