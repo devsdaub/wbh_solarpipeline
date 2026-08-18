@@ -57,4 +57,4 @@ def report_production_gaps() -> dict:
 @router.post("/pipeline/run")
 def trigger_pipeline(start: date | None = None, end: date | None = None) -> dict:
     """Führt Datenabruf und Aggregation in einem Durchlauf aus."""
-    return run_pipeline(start, end)
+    return run_pipeline(start, end, trigger="manuell")
