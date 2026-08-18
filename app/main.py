@@ -12,6 +12,7 @@ from app.api.upload import router as upload_router
 from app.config import load_plant_config
 from app.database import Base, SessionLocal, engine
 from app.models import DailyFact, HourlyWeather, PlantConfig
+from app.pipeline.scheduler import start_scheduler, stop_scheduler
 
 import logging
 
@@ -121,3 +122,11 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "zeilen": zeilen,
         },
     )
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(engine)
+    _seed_plant_config()
+    start_scheduler()
+    yield
+    stop_scheduler()
