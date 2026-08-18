@@ -62,3 +62,16 @@ class PowerReading(Base):
     plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     power_w: Mapped[int]
+
+
+class PipelineRun(Base):
+    __tablename__ = "pipeline_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    trigger: Mapped[str]
+    status: Mapped[str]
+    records: Mapped[int | None]
+    days: Mapped[int | None]
+    error: Mapped[str | None]
