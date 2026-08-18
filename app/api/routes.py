@@ -3,6 +3,9 @@ from datetime import date
 from fastapi import APIRouter
 
 from app.pipeline.ingestion import ingest_all, ingest_source
+from app.pipeline.transformation import aggregate_daily
+from app.database import SessionLocal
+from app.pipeline.ingestion import _current_plant_id
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
 
@@ -32,3 +35,11 @@ def trigger_full_ingestion(
 ) -> list[dict]:
     """Ruft alle aktiven Quellen für denselben Zeitraum ab."""
     return ingest_all(start, end)
+
+
+@router.post("/transform/daily")
+def trigger_daily_aggregation() -> dict:
+    """Verdichtet die Stundenwerte zu Tageswerten."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return aggregate_daily(plant_id)
