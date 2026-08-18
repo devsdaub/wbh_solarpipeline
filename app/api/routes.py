@@ -2,10 +2,14 @@ from datetime import date
 
 from fastapi import APIRouter
 
-from app.pipeline.ingestion import ingest_all, ingest_source
-from app.pipeline.transformation import aggregate_daily, find_production_gaps
 from app.database import SessionLocal
-from app.pipeline.ingestion import ingest_all, ingest_source, run_pipeline
+from app.pipeline.ingestion import (
+    _current_plant_id,
+    ingest_all,
+    ingest_source,
+    run_pipeline,
+)
+from app.pipeline.transformation import aggregate_daily, find_production_gaps
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
 
@@ -14,10 +18,7 @@ router = APIRouter(prefix="/api", tags=["Pipeline"])
 def trigger_weather_ingestion(
     start: date | None = None, end: date | None = None
 ) -> dict:
-    """Stößt den Abruf der Wetterdaten an.
-
-    Ohne Angabe wird der in sources.yaml hinterlegte Zeitraum verwendet.
-    """
+    """Stößt den Abruf der Wetterdaten an."""
     return ingest_source("open_meteo_weather", start, end)
 
 
