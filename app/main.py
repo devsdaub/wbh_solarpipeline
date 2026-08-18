@@ -16,6 +16,13 @@ from app.models import DailyFact, HourlyWeather, PlantConfig
 
 BASE_DIR = Path(__file__).resolve().parent
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
