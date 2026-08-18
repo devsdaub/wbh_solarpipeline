@@ -1,14 +1,17 @@
 from datetime import date
 
 from fastapi import APIRouter
+from sqlalchemy import select
 
 from app.database import SessionLocal
+from app.models import PipelineRun
 from app.pipeline.ingestion import (
     _current_plant_id,
     ingest_all,
     ingest_source,
     run_pipeline,
 )
+from app.pipeline.scheduler import scheduler_status
 from app.pipeline.transformation import aggregate_daily, find_production_gaps
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
@@ -58,3 +61,48 @@ def report_production_gaps() -> dict:
 def trigger_pipeline(start: date | None = None, end: date | None = None) -> dict:
     """Führt Datenabruf und Aggregation in einem Durchlauf aus."""
     return run_pipeline(start, end, trigger="manuell")
+
+
+@router.get("/pipeline/status")
+def pipeline_status() -> dict:
+    """Liefert Scheduler-Zustand und den letzten Lauf."""
+    with SessionLocal() as session:
+        letzter = session.execute(
+            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(1)
+        ).scalar_one_or_none()
+
+    return {
+        "scheduler": scheduler_status(),
+        "letzter_lauf": {
+            "gestartet": letzter.started_at,
+            "beendet": letzter.finished_at,
+            "ausloeser": letzter.trigger,
+            "status": letzter.status,
+            "datensaetze": letzter.records,
+            "tage": letzter.days,
+            "fehler": letzter.error,
+        } if letzter else None,
+    }
+
+
+@router.get("/pipeline/runs")
+def pipeline_runs(limit: int = 20) -> list[dict]:
+    """Liefert die letzten Pipeline-Läufe."""
+    with SessionLocal() as session:
+        laeufe = session.execute(
+            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(limit)
+        ).scalars().all()
+
+    return [
+        {
+            "id": lauf.id,
+            "gestartet": lauf.started_at,
+            "beendet": lauf.finished_at,
+            "ausloeser": lauf.trigger,
+            "status": lauf.status,
+            "datensaetze": lauf.records,
+            "tage": lauf.days,
+            "fehler": lauf.error,
+        }
+        for lauf in laeufe
+    ]

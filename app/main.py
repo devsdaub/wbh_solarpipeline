@@ -29,7 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     _seed_plant_config()
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 def _seed_plant_config() -> None:
@@ -122,11 +124,3 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "zeilen": zeilen,
         },
     )
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(engine)
-    _seed_plant_config()
-    start_scheduler()
-    yield
-    stop_scheduler()
