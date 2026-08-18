@@ -104,7 +104,12 @@ def import_energy_report(path: Path) -> dict:
         frame = adapter.parse(path, plant_id)
         records = _to_records(frame)
 
-        session.add_all([DailyFact(**record) for record in records])
+        statement = insert(DailyFact).values(records)
+        statement = statement.on_conflict_do_update(
+            index_elements=["plant_id", "date"],
+            set_={"production_kwh": statement.excluded.production_kwh},
+        )
+        session.execute(statement)
         session.commit()
 
     kalender = pd.date_range(frame["date"].min(), frame["date"].max(), freq="D")
