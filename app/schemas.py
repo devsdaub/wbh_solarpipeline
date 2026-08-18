@@ -26,3 +26,13 @@ HOURLY_AIR_SCHEMA = pa.DataFrameSchema(
     strict=True,
     coerce=True,
 )
+
+ENERGY_REPORT_SCHEMA = pa.DataFrameSchema(
+    {
+        "plant_id": pa.Column(int),
+        "date": pa.Column("datetime64[ns]", unique=True),
+        "production_kwh": pa.Column(float, pa.Check.in_range(0, 20)),
+    },
+    strict=True,
+    coerce=True,
+)
