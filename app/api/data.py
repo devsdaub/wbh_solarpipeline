@@ -38,3 +38,26 @@ def daily_series(days: int = 90) -> dict:
         "einstrahlung": [zeile.gti_kwh for zeile in zeilen],
         "eq": [zeile.eq for zeile in zeilen],
     }
+
+
+@router.get("/scatter")
+def scatter_series() -> dict:
+    """Liefert Wertepaare aus Einstrahlung und Produktion."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+        zeilen = session.execute(
+            select(DailyFact)
+            .where(DailyFact.plant_id == plant_id)
+            .where(DailyFact.production_kwh.is_not(None))
+            .where(DailyFact.gti_kwh.is_not(None))
+            .order_by(DailyFact.date)
+        ).scalars().all()
+
+    return {
+        "punkte": [
+            {"x": zeile.gti_kwh, "y": zeile.production_kwh,
+             "datum": zeile.date.isoformat()}
+            for zeile in zeilen
+        ]
+    }

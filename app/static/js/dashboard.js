@@ -71,10 +71,66 @@ async function wechsleZeitraum(tage, knopf) {
     aktualisiereZeitreihe(daten);
 }
 
+
+async function ladePunkte() {
+    const antwort = await fetch("/api/data/scatter");
+    if (!antwort.ok) {
+        throw new Error(`Datenabruf fehlgeschlagen: ${antwort.status}`);
+    }
+    return antwort.json();
+}
+
+
+function zeichneStreuung(daten) {
+    const canvas = document.getElementById("chart-streuung");
+
+    new Chart(canvas, {
+        type: "scatter",
+        data: {
+            datasets: [
+                {
+                    label: "Tageswerte",
+                    data: daten.punkte,
+                    backgroundColor: FARBE_PRODUKTION,
+                    pointRadius: 3,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (punkt) => {
+                            const wert = punkt.raw;
+                            return `${wert.datum}: ${wert.y} kWh bei ${wert.x.toFixed(2)} kWh/m²`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: { display: true, text: "Einstrahlung kWh/m²" },
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "Produktion kWh" },
+                },
+            },
+        },
+    });
+}
+
+
 async function start() {
     try {
         const daten = await ladeDaten(90);
         zeichneZeitreihe(daten);
+        const punkte = await ladePunkte();
+        zeichneStreuung(punkte);
     } catch (fehler) {
         console.error(fehler);
         return;
