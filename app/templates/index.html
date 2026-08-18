@@ -6,23 +6,65 @@
 <h1>{{ plant_name }}</h1>
 <p class="subtitle">{{ capacity_w }} W Balkonkraftwerk · Neigung {{ tilt_deg }}° · Azimut {{ azimuth_deg }}°</p>
 
+{% if upload == "ok" %}
+<div class="hinweis hinweis-ok">Import erfolgreich, {{ zeilen }} Tageswerte verarbeitet.</div>
+{% elif upload == "fehler" %}
+<div class="hinweis hinweis-fehler">Import fehlgeschlagen. Ist es ein Energy-Report?</div>
+{% endif %}
+
 <section class="stats">
     <div class="stat">
         <span class="stat-value">{{ total }}</span>
         <span class="stat-label">Stundenwerte</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ first.strftime("%d.%m.%Y") if first else "n. v." }}</span>
-        <span class="stat-label">Erster Datenpunkt</span>
+        <span class="stat-value">{{ tage_produktion }}</span>
+        <span class="stat-label">Tage Produktion</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ last.strftime("%d.%m.%Y") if last else "n. v." }}</span>
-        <span class="stat-label">Letzter Datenpunkt</span>
+        <span class="stat-value">{{ "%.0f"|format(summe_kwh) if summe_kwh else "n. v." }}</span>
+        <span class="stat-label">kWh gesamt</span>
     </div>
     <div class="stat">
         <span class="stat-value">{{ "%.1f"|format(max_dust) if max_dust is not none else "n. v." }}</span>
         <span class="stat-label">Max. Staub μg/m³</span>
     </div>
+</section>
+
+<section class="card">
+    <h2>Hoymiles-Export importieren</h2>
+    <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Importieren</button>
+    </form>
+    <p class="empty">Energy-Report als CSV, Tageswerte in kWh.</p>
+</section>
+
+<section class="card">
+    <h2>Produktion, letzte 14 Tage mit Daten</h2>
+
+    {% if tage %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th class="num">Produktion kWh</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tag in tage %}
+                <tr>
+                    <td class="mono">{{ tag.date.strftime("%d.%m.%Y") }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.production_kwh) if tag.production_kwh is not none else "n. v." }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Produktionsdaten. Lade oben einen Energy-Report hoch.</p>
+    {% endif %}
 </section>
 
 <section class="card">
@@ -57,7 +99,7 @@
     </div>
     {% else %}
     <p class="empty">
-        Noch keine Daten vorhanden. Starte den Abruf über
+        Noch keine Wetterdaten. Starte den Abruf über
         <code>POST /api/ingest/all</code> in der
         <a href="/docs">API-Dokumentation</a>.
     </p>
