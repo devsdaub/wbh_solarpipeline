@@ -125,3 +125,24 @@ def import_energy_report(path: Path) -> dict:
         "kalendertage": len(kalender),
         "fehlende_tage": len(fehlend),
     }
+
+
+def run_pipeline(start: date | None = None, end: date | None = None) -> dict:
+    """Ruft alle Quellen ab und verdichtet anschliessend auf Tageswerte."""
+    # lokal importiert, sonst Zirkelbezug mit transformation.py
+    from app.pipeline.transformation import aggregate_daily, find_production_gaps
+
+    quellen = ingest_all(start, end)
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+    aggregation = aggregate_daily(plant_id)
+    luecken = find_production_gaps(plant_id)
+
+    return {
+        "status": "ok",
+        "quellen": quellen,
+        "aggregation": aggregation,
+        "datenqualitaet": luecken,
+    }

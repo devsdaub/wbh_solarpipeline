@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from app.pipeline.ingestion import ingest_all, ingest_source
 from app.pipeline.transformation import aggregate_daily, find_production_gaps
 from app.database import SessionLocal
-from app.pipeline.ingestion import _current_plant_id
+from app.pipeline.ingestion import ingest_all, ingest_source, run_pipeline
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
 
@@ -51,3 +51,9 @@ def report_production_gaps() -> dict:
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
     return find_production_gaps(plant_id)
+
+
+@router.post("/pipeline/run")
+def trigger_pipeline(start: date | None = None, end: date | None = None) -> dict:
+    """Führt Datenabruf und Aggregation in einem Durchlauf aus."""
+    return run_pipeline(start, end)
