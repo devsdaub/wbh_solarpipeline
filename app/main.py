@@ -86,32 +86,21 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             select(PlantConfig).where(PlantConfig.name == settings.name)
         ).scalar_one()
 
-        rows = session.execute(
-            select(HourlyWeather)
-            .where(HourlyWeather.plant_id == plant.id)
-            .order_by(HourlyWeather.timestamp.desc())
-            .limit(24)
-        ).scalars().all()
-
-        total, max_dust = session.execute(
-            select(
-                func.count(HourlyWeather.id),
-                func.max(HourlyWeather.dust),
-            ).where(HourlyWeather.plant_id == plant.id)
-        ).one()
-
         tage = session.execute(
             select(DailyFact)
             .where(DailyFact.plant_id == plant.id)
-            .where(DailyFact.production_kwh.is_not(None))
             .order_by(DailyFact.date.desc())
-            .limit(14)
+            .limit(21)
         ).scalars().all()
 
-        tage_produktion, summe_kwh = session.execute(
+        stunden, tage_gesamt, summe_kwh, eq_mittel = session.execute(
             select(
+                select(func.count(HourlyWeather.id))
+                .where(HourlyWeather.plant_id == plant.id)
+                .scalar_subquery(),
                 func.count(DailyFact.id),
                 func.sum(DailyFact.production_kwh),
+                func.avg(DailyFact.eq),
             ).where(DailyFact.plant_id == plant.id)
         ).one()
 
@@ -123,12 +112,11 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "capacity_w": settings.panel.capacity_w,
             "tilt_deg": settings.panel.tilt_deg,
             "azimuth_deg": settings.panel.azimuth_deg,
-            "rows": rows,
-            "total": total,
-            "max_dust": max_dust,
             "tage": tage,
-            "tage_produktion": tage_produktion,
+            "stunden": stunden,
+            "tage_gesamt": tage_gesamt,
             "summe_kwh": summe_kwh,
+            "eq_mittel": eq_mittel,
             "upload": upload,
             "zeilen": zeilen,
         },
