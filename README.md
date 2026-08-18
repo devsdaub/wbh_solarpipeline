@@ -136,3 +136,27 @@ scheduler:
     pipeline:
       interval_minutes: 180
       enabled: true
+```
+
+## Diagramme
+
+Das Dashboard zeigt zwei Diagramme, gezeichnet mit Chart.js:
+
+| Diagramm | Datenendpunkt | Inhalt |
+|---|---|---|
+| Verlauf | `GET /api/data/daily?days=N` | Produktion und Einstrahlung als Zeitreihe |
+| Streuung | `GET /api/data/scatter` | Produktion über Einstrahlung, ein Punkt je Tag |
+
+Der Zeitraum des Verlaufsdiagramms ist über Schaltflächen wählbar
+(30 Tage, 90 Tage, 1 Jahr). Er wird vom letzten vorhandenen Datenpunkt aus
+zurückgerechnet, nicht vom aktuellen Datum, weil Produktions- und
+Wetterdaten unterschiedlich weit reichen.
+
+Fehlende Produktionswerte werden als `null` ausgeliefert und im Diagramm
+als Unterbrechung dargestellt. Sie werden nicht durch Nullwerte ersetzt.
+
+### Chart.js lokal eingebunden
+
+`app/static/js/chart.umd.min.js` liegt im Repository und wird nicht von
+einem CDN geladen. Damit ist die Anwendung offline lauffähig, und es
+werden keine Betrachterdaten an Dritte übertragen.
