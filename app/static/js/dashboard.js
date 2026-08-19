@@ -1,10 +1,11 @@
-const FARBE_PRODUKTION = "#f59e0b";
-const FARBE_EINSTRAHLUNG = "#6b7280";
+const stil = getComputedStyle(document.documentElement);
+const FARBE_PRODUKTION = stil.getPropertyValue("--color-data").trim();
+const FARBE_EINSTRAHLUNG = stil.getPropertyValue("--color-data-2").trim();
 
 let zeitreihe = null;
 
-async function ladeDaten(tage) {
-    const antwort = await fetch(`/api/data/daily?days=${tage}`);
+async function ladeJson(pfad) {
+    const antwort = await fetch(pfad);
     if (!antwort.ok) {
         throw new Error(`Datenabruf fehlgeschlagen: ${antwort.status}`);
     }
@@ -64,22 +65,11 @@ async function wechsleZeitraum(tage, knopf) {
     });
     knopf.classList.add("aktiv");
 
-    document.getElementById("zeitraum-titel").textContent =
-        knopf.dataset.titel;
+    document.getElementById("zeitraum-titel").textContent = knopf.dataset.titel;
 
-    const daten = await ladeDaten(tage);
+    const daten = await ladeJson(`/api/data/daily?days=${tage}`);
     aktualisiereZeitreihe(daten);
 }
-
-
-async function ladePunkte() {
-    const antwort = await fetch("/api/data/scatter");
-    if (!antwort.ok) {
-        throw new Error(`Datenabruf fehlgeschlagen: ${antwort.status}`);
-    }
-    return antwort.json();
-}
-
 
 function zeichneStreuung(daten) {
     const canvas = document.getElementById("chart-streuung");
@@ -124,13 +114,10 @@ function zeichneStreuung(daten) {
     });
 }
 
-
 async function start() {
     try {
-        const daten = await ladeDaten(90);
-        zeichneZeitreihe(daten);
-        const punkte = await ladePunkte();
-        zeichneStreuung(punkte);
+        zeichneZeitreihe(await ladeJson("/api/data/daily?days=90"));
+        zeichneStreuung(await ladeJson("/api/data/scatter"));
     } catch (fehler) {
         console.error(fehler);
         return;
