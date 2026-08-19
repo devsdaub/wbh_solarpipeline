@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -11,10 +12,10 @@ from sqlalchemy import func, select, text
 from app.api.routes import router as api_router
 from app.api.upload import router as upload_router
 from app.api.data import router as data_router
-from app.config import load_plant_config
+from app.config import load_plant_config, load_scheduler_config
+from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
 from app.database import Base, SessionLocal, engine
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
-from app.pipeline.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -128,5 +129,31 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "letzter_lauf": letzter_lauf,
             "upload": upload,
             "zeilen": zeilen,
+        },
+    )
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request, gespeichert: str | None = None):
+    status = scheduler_status()
+
+    with SessionLocal() as session:
+        laeufe = session.execute(
+            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
+        ).scalars().all()
+
+    naechster = None
+    if status["naechster_lauf"]:
+        naechster = datetime.fromisoformat(status["naechster_lauf"])
+
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "status": status,
+            "scheduler": load_scheduler_config(),
+            "laeufe": laeufe,
+            "naechster": naechster,
+            "gespeichert": gespeichert,
         },
     )

@@ -293,3 +293,59 @@ h1 {
     border-color: var(--color-dark);
     color: var(--color-bg);
 }
+
+
+/* --- Navigation ------------------------------------------------------------ */
+
+.navbar a.brand {
+    color: inherit;
+    text-decoration: none;
+}
+
+.nav-rechts {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.nav-icon {
+    color: var(--color-bg);
+    display: flex;
+    opacity: 0.7;
+}
+
+.nav-icon:hover {
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+/* --- Statusanzeige --------------------------------------------------------- */
+
+.status {
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.status-ok {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-fehler {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-laeuft {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.fehlerzeile {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: #991b1b;
+    background: #fef2f2;
+    padding: var(--space-sm);
+}
