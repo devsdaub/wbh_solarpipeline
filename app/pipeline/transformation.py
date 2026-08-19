@@ -19,6 +19,7 @@ DAILY_UPDATE_COLUMNS = (
     "avg_cloud_cover",
     "max_dust",
     "avg_pm10",
+    "hours",
     "eq",
 )
 
@@ -36,6 +37,7 @@ def aggregate_hourly(frame: pd.DataFrame, plant_id: int) -> pd.DataFrame:
         avg_cloud_cover=("cloud_cover", "mean"),
         max_dust=("dust", "max"),
         avg_pm10=("pm10", "mean"),
+        hours=("timestamp", "size"),
     ).reset_index()
 
     taeglich["avg_cloud_cover"] = taeglich["avg_cloud_cover"].round().astype("Int64")

@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter
 from sqlalchemy import func, select
@@ -9,6 +9,9 @@ from app.pipeline.ingestion import _current_plant_id
 
 router = APIRouter(prefix="/api/data", tags=["Daten"])
 
+# Ein vollständiger Tag hat 24 Stundenwerte, an der Zeitumstellung 23 oder 25.
+MIN_STUNDEN = 23
+
 
 @router.get("/daily")
 def daily_series(days: int = 90) -> dict:
@@ -17,7 +20,9 @@ def daily_series(days: int = 90) -> dict:
         plant_id = _current_plant_id(session)
 
         letzter = session.execute(
-            select(func.max(DailyFact.date)).where(DailyFact.plant_id == plant_id)
+            select(func.max(DailyFact.date))
+            .where(DailyFact.plant_id == plant_id)
+            .where(DailyFact.hours >= MIN_STUNDEN)
         ).scalar_one()
 
         if letzter is None:
@@ -29,6 +34,7 @@ def daily_series(days: int = 90) -> dict:
             select(DailyFact)
             .where(DailyFact.plant_id == plant_id)
             .where(DailyFact.date.between(von, letzter))
+            .where(DailyFact.hours >= MIN_STUNDEN)
             .order_by(DailyFact.date)
         ).scalars().all()
 
@@ -51,6 +57,7 @@ def scatter_series() -> dict:
             .where(DailyFact.plant_id == plant_id)
             .where(DailyFact.production_kwh.is_not(None))
             .where(DailyFact.gti_kwh.is_not(None))
+            .where(DailyFact.hours >= MIN_STUNDEN)
             .order_by(DailyFact.date)
         ).scalars().all()
 

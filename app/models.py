@@ -35,6 +35,7 @@ class DailyFact(Base):
     max_dust: Mapped[float | None]
     avg_pm10: Mapped[float | None]
     eq: Mapped[float | None]
+    hours: Mapped[int | None]
 
 
 class HourlyWeather(Base):
