@@ -160,3 +160,28 @@ als Unterbrechung dargestellt. Sie werden nicht durch Nullwerte ersetzt.
 `app/static/js/chart.umd.min.js` liegt im Repository und wird nicht von
 einem CDN geladen. Damit ist die Anwendung offline lauffähig, und es
 werden keine Betrachterdaten an Dritte übertragen.
+
+
+## Oberfläche
+
+| Seite | Inhalt |
+|---|---|
+| `/` | Dashboard: Kennzahlen, Diagramme, Tageswerte, CSV-Upload |
+| `/settings` | Scheduler-Konfiguration, Datenquellen, Lauf-Historie |
+| `/docs` | Automatisch erzeugte OpenAPI-Dokumentation |
+
+### Konfiguration über die Oberfläche
+
+Scheduler-Intervall, automatische Ausführung und einzelne Datenquellen
+lassen sich unter `/settings` ändern. Geschrieben wird in dieselben
+YAML-Dateien, die auch von Hand bearbeitet werden können. Die Dateien
+bleiben die Quelle der Wahrheit, es entsteht kein zweiter
+Konfigurationsspeicher.
+
+Beide Änderungsarten wirken ohne Neustart, allerdings auf
+unterschiedlichem Weg:
+
+| Konfiguration | Übernahme |
+|---|---|
+| Datenquellen | automatisch, wird bei jedem Lauf frisch gelesen |
+| Scheduler | über `apply_config()`, da der Auftrag im Arbeitsspeicher gehalten wird |

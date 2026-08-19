@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -8,13 +9,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select, text
 
-from app.api.routes import router as api_router
-from app.api.upload import router as upload_router
 from app.api.data import router as data_router
-from app.config import load_plant_config
+from app.api.routes import router as api_router
+from app.api.settings import router as settings_router
+from app.api.upload import router as upload_router
+from app.config import load_plant_config, load_scheduler_config, load_sources_config
 from app.database import Base, SessionLocal, engine
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
-from app.pipeline.scheduler import start_scheduler, stop_scheduler
+from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +70,8 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)
 app.include_router(upload_router)
 app.include_router(data_router)
+app.include_router(settings_router)
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -128,5 +132,35 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "letzter_lauf": letzter_lauf,
             "upload": upload,
             "zeilen": zeilen,
+        },
+    )
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request, gespeichert: str | None = None, tage: int | None = None
+):
+    status = scheduler_status()
+
+    with SessionLocal() as session:
+        laeufe = session.execute(
+            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
+        ).scalars().all()
+
+    naechster = None
+    if status["naechster_lauf"]:
+        naechster = datetime.fromisoformat(status["naechster_lauf"])
+
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "status": status,
+            "scheduler": load_scheduler_config(),
+            "quellen": load_sources_config(),
+            "laeufe": laeufe,
+            "naechster": naechster,
+            "gespeichert": gespeichert,
+            "tage": tage,
         },
     )
