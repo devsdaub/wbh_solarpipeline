@@ -1,6 +1,7 @@
 const stil = getComputedStyle(document.documentElement);
 const FARBE_PRODUKTION = stil.getPropertyValue("--color-data").trim();
 const FARBE_EINSTRAHLUNG = stil.getPropertyValue("--color-data-2").trim();
+const FARBE_DRITTE = stil.getPropertyValue("--color-data-3").trim();
 
 let zeitreihe = null;
 
@@ -13,9 +14,7 @@ async function ladeJson(pfad) {
 }
 
 function zeichneZeitreihe(daten) {
-    const canvas = document.getElementById("chart-zeitreihe");
-
-    zeitreihe = new Chart(canvas, {
+    zeitreihe = new Chart(document.getElementById("chart-zeitreihe"), {
         type: "line",
         data: {
             labels: daten.labels,
@@ -52,29 +51,22 @@ function zeichneZeitreihe(daten) {
     });
 }
 
-function aktualisiereZeitreihe(daten) {
+async function wechsleZeitraum(tage, knopf) {
+    document.querySelectorAll(".zeitraum-knopf").forEach((element) => {
+        element.classList.remove("aktiv");
+    });
+    knopf.classList.add("aktiv");
+    document.getElementById("zeitraum-titel").textContent = knopf.dataset.titel;
+
+    const daten = await ladeJson(`/api/data/daily?days=${tage}`);
     zeitreihe.data.labels = daten.labels;
     zeitreihe.data.datasets[0].data = daten.produktion;
     zeitreihe.data.datasets[1].data = daten.einstrahlung;
     zeitreihe.update();
 }
 
-async function wechsleZeitraum(tage, knopf) {
-    document.querySelectorAll(".zeitraum-knopf").forEach((element) => {
-        element.classList.remove("aktiv");
-    });
-    knopf.classList.add("aktiv");
-
-    document.getElementById("zeitraum-titel").textContent = knopf.dataset.titel;
-
-    const daten = await ladeJson(`/api/data/daily?days=${tage}`);
-    aktualisiereZeitreihe(daten);
-}
-
 function zeichneStreuung(daten) {
-    const canvas = document.getElementById("chart-streuung");
-
-    new Chart(canvas, {
+    new Chart(document.getElementById("chart-streuung"), {
         type: "scatter",
         data: {
             datasets: [
@@ -101,14 +93,42 @@ function zeichneStreuung(daten) {
                 },
             },
             scales: {
-                x: {
-                    beginAtZero: true,
-                    title: { display: true, text: "Einstrahlung kWh/m²" },
+                x: { beginAtZero: true, title: { display: true, text: "Einstrahlung kWh/m²" } },
+                y: { beginAtZero: true, title: { display: true, text: "Produktion kWh" } },
+            },
+        },
+    });
+}
+
+function zeichneMonate(daten) {
+    const farben = [FARBE_PRODUKTION, FARBE_EINSTRAHLUNG, FARBE_DRITTE];
+
+    new Chart(document.getElementById("chart-monate"), {
+        type: "bar",
+        data: {
+            labels: daten.labels,
+            datasets: daten.reihen.map((reihe, i) => ({
+                label: String(reihe.jahr),
+                data: reihe.werte,
+                backgroundColor: farben[i % farben.length],
+                tage: reihe.tage,
+            })),
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        afterLabel: (punkt) => {
+                            const anzahl = punkt.dataset.tage[punkt.dataIndex];
+                            return anzahl ? `${anzahl} Messtage` : "";
+                        },
+                    },
                 },
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: "Produktion kWh" },
-                },
+            },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "kWh" } },
             },
         },
     });
@@ -118,6 +138,7 @@ async function start() {
     try {
         zeichneZeitreihe(await ladeJson("/api/data/daily?days=90"));
         zeichneStreuung(await ladeJson("/api/data/scatter"));
+        zeichneMonate(await ladeJson("/api/data/monthly"));
     } catch (fehler) {
         console.error(fehler);
         return;

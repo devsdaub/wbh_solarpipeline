@@ -68,3 +68,43 @@ def scatter_series() -> dict:
             for zeile in zeilen
         ]
     }
+
+
+@router.get("/monthly")
+def monthly_series() -> dict:
+    """Liefert Monatssummen je Jahr für den Jahresvergleich."""
+    monat = func.extract("month", DailyFact.date)
+    jahr = func.extract("year", DailyFact.date)
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+        zeilen = session.execute(
+            select(
+                jahr.label("jahr"),
+                monat.label("monat"),
+                func.sum(DailyFact.production_kwh).label("kwh"),
+                func.count(DailyFact.production_kwh).label("tage"),
+            )
+            .where(DailyFact.plant_id == plant_id)
+            .where(DailyFact.production_kwh.is_not(None))
+            .group_by("jahr", "monat")
+            .order_by("jahr", "monat")
+        ).all()
+
+    jahre = sorted({int(zeile.jahr) for zeile in zeilen})
+    werte = {(int(z.jahr), int(z.monat)): round(z.kwh, 1) for z in zeilen}
+    tage = {(int(z.jahr), int(z.monat)): z.tage for z in zeilen}
+
+    return {
+        "labels": ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+                   "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+        "reihen": [
+            {
+                "jahr": j,
+                "werte": [werte.get((j, m)) for m in range(1, 13)],
+                "tage": [tage.get((j, m)) for m in range(1, 13)],
+            }
+            for j in jahre
+        ],
+    }
