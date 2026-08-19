@@ -53,6 +53,27 @@
 </section>
 
 <section class="card">
+    <h2>Datenquellen</h2>
+    <form action="/settings/sources" method="post" class="einstellungen">
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_weather" value="true"
+                   {{ "checked" if quellen.open_meteo_weather.enabled else "" }}>
+            <span>Open-Meteo Wetter</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_air" value="true"
+                   {{ "checked" if quellen.open_meteo_air.enabled else "" }}>
+            <span>Open-Meteo Luftqualität</span>
+        </label>
+        <button type="submit">Speichern</button>
+    </form>
+    <p class="empty">
+        Abgeschaltete Quellen werden beim Pipeline-Lauf übersprungen. Die
+        Änderung wirkt ab dem nächsten Durchlauf, ohne Neustart.
+    </p>
+</section>
+
+<section class="card">
     <h2>Lauf-Historie</h2>
     {% if laeufe %}
     <div class="table-wrap">

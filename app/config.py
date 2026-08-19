@@ -82,3 +82,12 @@ def save_scheduler_config(settings: SchedulerSettings) -> None:
         yaml.safe_dump(inhalt, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def save_sources_config(settings: SourcesSettings) -> None:
+    path = CONFIG_DIR / "sources.yaml"
+    inhalt = {"sources": settings.model_dump()}
+    path.write_text(
+        yaml.safe_dump(inhalt, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
