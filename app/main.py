@@ -15,9 +15,10 @@ from app.api.settings import router as settings_router
 from app.api.upload import router as upload_router
 from app.config import load_plant_config, load_scheduler_config, load_sources_config
 from app.database import Base, SessionLocal, engine
-from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
-from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
 from app.filters import als_lokalzeit, zeitzone_kuerzel
+from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
+from app.pipeline.auswertung import baue_heatmap
+from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,10 +97,11 @@ def dashboard(request: Request):
         plant = session.execute(
             select(PlantConfig).where(PlantConfig.name == settings.name)
         ).scalar_one()
+        plant_id = plant.id
 
         tage = session.execute(
             select(DailyFact)
-            .where(DailyFact.plant_id == plant.id)
+            .where(DailyFact.plant_id == plant_id)
             .order_by(DailyFact.date.desc())
             .limit(21)
         ).scalars().all()
@@ -107,12 +109,12 @@ def dashboard(request: Request):
         stunden, tage_gesamt, summe_kwh, eq_mittel = session.execute(
             select(
                 select(func.count(HourlyWeather.id))
-                .where(HourlyWeather.plant_id == plant.id)
+                .where(HourlyWeather.plant_id == plant_id)
                 .scalar_subquery(),
                 func.count(DailyFact.id),
                 func.sum(DailyFact.production_kwh),
                 func.avg(DailyFact.eq),
-            ).where(DailyFact.plant_id == plant.id)
+            ).where(DailyFact.plant_id == plant_id)
         ).one()
 
     return templates.TemplateResponse(
@@ -128,6 +130,7 @@ def dashboard(request: Request):
             "tage_gesamt": tage_gesamt,
             "summe_kwh": summe_kwh,
             "eq_mittel": eq_mittel,
+            "heatmap": baue_heatmap(plant_id),
             "zeitzone": zeitzone_kuerzel(),
         },
     )

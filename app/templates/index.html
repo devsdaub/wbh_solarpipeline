@@ -40,6 +40,40 @@
         </div>
     </section>
 
+    <section class="card voll">
+        <h2>Tagesproduktion im Jahresverlauf</h2>
+        {% if heatmap %}
+        <div class="table-wrap">
+            <div class="heatmap">
+                <div class="hm-kopf">
+                    <span class="hm-label"></span>
+                    {% for tag in range(1, 32) %}
+                    <span class="hm-tagnr">{{ "%02d"|format(tag) }}</span>
+                    {% endfor %}
+                </div>
+                {% for monat in heatmap %}
+                <div class="hm-zeile">
+                    <span class="hm-label">{{ monat.label }}</span>
+                    {% for tag in monat.tage %}
+                    {% if not tag.vorhanden %}
+                    <span class="hm-zelle hm-leer"></span>
+                    {% elif tag.wert is none %}
+                    <span class="hm-zelle hm-fehlt" title="{{ tag.datum }}: keine Daten"></span>
+                    {% else %}
+                    <span class="hm-zelle" style="opacity: {{ 0.08 + tag.anteil * 0.92 }}"
+                          title="{{ tag.datum }}: {{ "%.2f"|format(tag.wert) }} kWh"></span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="empty">Je kräftiger die Farbe, desto höher der Tagesertrag. Schraffierte Felder sind Tage ohne Messung.</p>
+        {% else %}
+        <p class="empty">Noch keine Produktionsdaten vorhanden.</p>
+        {% endif %}
+    </section>
+
     <section class="card">
         <h2>Produktion über Einstrahlung</h2>
         <div class="chart-box-klein">

@@ -407,3 +407,53 @@ button:hover {
     border-color: var(--color-accent);
     color: #ffffff;
 }
+
+
+/* --- Kalender-Heatmap ------------------------------------------------------ */
+
+.heatmap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 700px;
+}
+
+.hm-kopf,
+.hm-zeile {
+    display: grid;
+    grid-template-columns: 64px repeat(31, 1fr);
+    gap: 3px;
+    align-items: center;
+}
+
+.hm-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+.hm-tagnr {
+    font-size: 0.6rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.hm-zelle {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--color-data);
+}
+
+.hm-zelle.hm-leer {
+    background: transparent;
+}
+
+.hm-zelle.hm-fehlt {
+    background: repeating-linear-gradient(
+        45deg, var(--color-border), var(--color-border) 2px,
+        transparent 2px, transparent 4px
+    );
+}
+
+.hm-zelle:not(.hm-leer):hover {
+    outline: 2px solid var(--color-heading);
+}
