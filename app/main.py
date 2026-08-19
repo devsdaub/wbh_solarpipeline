@@ -89,7 +89,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, upload: str | None = None, zeilen: int | None = None):
+def dashboard(request: Request):
     settings = load_plant_config()
 
     with SessionLocal() as session:
@@ -115,10 +115,6 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             ).where(DailyFact.plant_id == plant.id)
         ).one()
 
-        letzter_lauf = session.execute(
-            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(1)
-        ).scalar_one_or_none()
-
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -132,9 +128,6 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "tage_gesamt": tage_gesamt,
             "summe_kwh": summe_kwh,
             "eq_mittel": eq_mittel,
-            "letzter_lauf": letzter_lauf,
-            "upload": upload,
-            "zeilen": zeilen,
             "zeitzone": zeitzone_kuerzel(),
         },
     )
@@ -142,7 +135,10 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(
-    request: Request, gespeichert: str | None = None, tage: int | None = None
+    request: Request,
+    gespeichert: str | None = None,
+    tage: int | None = None,
+    zeilen: int | None = None,
 ):
     status = scheduler_status()
 
@@ -150,6 +146,8 @@ def settings_page(
         laeufe = session.execute(
             select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
         ).scalars().all()
+
+        letzter_lauf = laeufe[0] if laeufe else None
 
     naechster = None
     if status["naechster_lauf"]:
@@ -163,9 +161,11 @@ def settings_page(
             "scheduler": load_scheduler_config(),
             "quellen": load_sources_config(),
             "laeufe": laeufe,
+            "letzter_lauf": letzter_lauf,
             "naechster": naechster,
             "gespeichert": gespeichert,
             "tage": tage,
+            "zeilen": zeilen,
             "zeitzone": zeitzone_kuerzel(),
         },
     )

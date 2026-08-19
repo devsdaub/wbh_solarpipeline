@@ -6,12 +6,6 @@
 <h1>{{ plant_name }}</h1>
 <p class="subtitle">{{ capacity_w }} W Balkonkraftwerk · Neigung {{ tilt_deg }}° · Azimut {{ azimuth_deg }}°</p>
 
-{% if upload == "ok" %}
-<div class="hinweis hinweis-ok">Import erfolgreich, {{ zeilen }} Tageswerte verarbeitet.</div>
-{% elif upload == "fehler" %}
-<div class="hinweis hinweis-fehler">Import fehlgeschlagen. Ist es ein Energy-Report?</div>
-{% endif %}
-
 <section class="stats">
     <div class="stat">
         <span class="stat-value">{{ tage_gesamt }}</span>
@@ -54,35 +48,6 @@
 </section>
 
 <section class="card">
-    <h2>Pipeline</h2>
-    {% if letzter_lauf %}
-    <p class="subtitle">
-        Letzter Lauf {{ letzter_lauf.started_at.strftime("%d.%m.%Y %H:%M") }} UTC
-        · Auslöser {{ letzter_lauf.trigger }}
-        · Status <strong>{{ letzter_lauf.status }}</strong>
-        {% if letzter_lauf.days %}· {{ letzter_lauf.days }} Tage verarbeitet{% endif %}
-    </p>
-    {% if letzter_lauf.error %}
-    <div class="hinweis hinweis-fehler">{{ letzter_lauf.error }}</div>
-    {% endif %}
-    {% else %}
-    <p class="empty">Noch kein Lauf protokolliert.</p>
-    {% endif %}
-    <p class="empty">
-        Ausführen und konfigurieren in den <a href="/settings">Einstellungen</a>.
-    </p>
-</section>
-
-<section class="card">
-    <h2>Hoymiles-Export importieren</h2>
-    <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
-        <input type="file" name="file" accept=".csv" required>
-        <button type="submit">Importieren</button>
-    </form>
-    <p class="empty">Energy-Report als CSV, Tageswerte in kWh.</p>
-</section>
-
-<section class="card">
     <h2>Tageswerte, letzte 21 Tage</h2>
 
     {% if tage %}
@@ -116,9 +81,8 @@
     </div>
     {% else %}
     <p class="empty">
-        Noch keine Tageswerte. Starte den vollständigen Durchlauf über
-        <code>POST /api/pipeline/run</code> in der
-        <a href="/docs">API-Dokumentation</a>.
+        Noch keine Tageswerte. Import und Pipeline-Steuerung in den
+        <a href="/settings">Einstellungen</a>.
     </p>
     {% endif %}
 </section>
