@@ -27,7 +27,13 @@
     </div>
 </section>
 
-{% if gespeichert %}
+{% if gespeichert == "lauf" %}
+<div class="hinweis hinweis-ok">Pipeline-Lauf abgeschlossen, {{ tage }} Tage verarbeitet.</div>
+{% elif gespeichert == "fehler" %}
+<div class="hinweis hinweis-fehler">
+    Pipeline-Lauf fehlgeschlagen. Einzelheiten stehen in der Historie.
+</div>
+{% elif gespeichert %}
 <div class="hinweis hinweis-ok">Einstellungen gespeichert.</div>
 {% endif %}
 
@@ -45,6 +51,9 @@
             <span>Automatische Ausführung aktiv</span>
         </label>
         <button type="submit">Speichern</button>
+    </form>
+    <form action="/settings/run" method="post" class="einstellungen">
+        <button type="submit">Pipeline jetzt ausführen</button>
     </form>
     <p class="empty">
         Gespeichert wird in <code>config/scheduler.yaml</code>. Die Datei bleibt

@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Form
 from fastapi.responses import RedirectResponse
 
-from app.config import load_scheduler_config, load_sources_config, save_scheduler_config, save_sources_config
+from app.config import (
+    load_scheduler_config,
+    load_sources_config,
+    save_scheduler_config,
+    save_sources_config,
+)
+from app.pipeline.ingestion import run_pipeline
 from app.pipeline.scheduler import apply_config
 
 router = APIRouter(prefix="/settings", tags=["Einstellungen"])
@@ -36,3 +42,15 @@ def update_sources(
     save_sources_config(settings)
 
     return RedirectResponse("/settings?gespeichert=quellen", status_code=303)
+
+
+@router.post("/run")
+def trigger_run_from_form() -> RedirectResponse:
+    """Löst einen Pipeline-Lauf aus und kehrt zur Settings-Seite zurück."""
+    try:
+        ergebnis = run_pipeline(trigger="manuell")
+    except Exception:
+        return RedirectResponse("/settings?gespeichert=fehler", status_code=303)
+
+    tage = ergebnis["aggregation"].get("geschriebene_tage", 0)
+    return RedirectResponse(f"/settings?gespeichert=lauf&tage={tage}", status_code=303)
