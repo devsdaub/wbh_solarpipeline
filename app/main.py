@@ -15,8 +15,11 @@ from app.api.settings import router as settings_router
 from app.api.upload import router as upload_router
 from app.config import load_plant_config, load_scheduler_config, load_sources_config
 from app.database import Base, SessionLocal, engine
+from app.filters import als_lokalzeit, zeitzone_kuerzel
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
+from app.pipeline.auswertung import baue_heatmap
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
+from app.stammdaten import seed_plant_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,32 +33,10 @@ BASE_DIR = Path(__file__).resolve().parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
-    _seed_plant_config()
+    seed_plant_config()
     start_scheduler()
     yield
     stop_scheduler()
-
-
-def _seed_plant_config() -> None:
-    settings = load_plant_config()
-    with SessionLocal() as session:
-        plant = session.execute(
-            select(PlantConfig).where(PlantConfig.name == settings.name)
-        ).scalar_one_or_none()
-
-        if plant is None:
-            plant = PlantConfig(name=settings.name)
-            session.add(plant)
-
-        plant.latitude = settings.location.latitude
-        plant.longitude = settings.location.longitude
-        plant.tilt_deg = settings.panel.tilt_deg
-        plant.azimuth_deg = settings.panel.azimuth_deg
-        plant.capacity_w = settings.panel.capacity_w
-        plant.installation_date = settings.installation_date
-        plant.acquisition_cost_eur = settings.economics.acquisition_cost_eur
-        plant.subsidy_eur = settings.economics.subsidy_eur
-        session.commit()
 
 
 app = FastAPI(
@@ -66,6 +47,8 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.filters["lokal"] = als_lokalzeit
+
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)
 app.include_router(upload_router)
@@ -86,17 +69,18 @@ def health() -> dict[str, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, upload: str | None = None, zeilen: int | None = None):
+def dashboard(request: Request):
     settings = load_plant_config()
 
     with SessionLocal() as session:
         plant = session.execute(
             select(PlantConfig).where(PlantConfig.name == settings.name)
         ).scalar_one()
+        plant_id = plant.id
 
         tage = session.execute(
             select(DailyFact)
-            .where(DailyFact.plant_id == plant.id)
+            .where(DailyFact.plant_id == plant_id)
             .order_by(DailyFact.date.desc())
             .limit(21)
         ).scalars().all()
@@ -104,41 +88,35 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
         stunden, tage_gesamt, summe_kwh, eq_mittel = session.execute(
             select(
                 select(func.count(HourlyWeather.id))
-                .where(HourlyWeather.plant_id == plant.id)
+                .where(HourlyWeather.plant_id == plant_id)
                 .scalar_subquery(),
                 func.count(DailyFact.id),
                 func.sum(DailyFact.production_kwh),
                 func.avg(DailyFact.eq),
-            ).where(DailyFact.plant_id == plant.id)
+            ).where(DailyFact.plant_id == plant_id)
         ).one()
-
-        letzter_lauf = session.execute(
-            select(PipelineRun).order_by(PipelineRun.id.desc()).limit(1)
-        ).scalar_one_or_none()
 
     return templates.TemplateResponse(
         request,
         "index.html",
         {
-            "plant_name": settings.name,
-            "capacity_w": settings.panel.capacity_w,
-            "tilt_deg": settings.panel.tilt_deg,
-            "azimuth_deg": settings.panel.azimuth_deg,
             "tage": tage,
             "stunden": stunden,
             "tage_gesamt": tage_gesamt,
             "summe_kwh": summe_kwh,
             "eq_mittel": eq_mittel,
-            "letzter_lauf": letzter_lauf,
-            "upload": upload,
-            "zeilen": zeilen,
+            "heatmap": baue_heatmap(plant_id),
+            "zeitzone": zeitzone_kuerzel(),
         },
     )
 
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(
-    request: Request, gespeichert: str | None = None, tage: int | None = None
+    request: Request,
+    gespeichert: str | None = None,
+    tage: int | None = None,
+    zeilen: int | None = None,
 ):
     status = scheduler_status()
 
@@ -146,6 +124,8 @@ def settings_page(
         laeufe = session.execute(
             select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
         ).scalars().all()
+
+        letzter_lauf = laeufe[0] if laeufe else None
 
     naechster = None
     if status["naechster_lauf"]:
@@ -159,8 +139,11 @@ def settings_page(
             "scheduler": load_scheduler_config(),
             "quellen": load_sources_config(),
             "laeufe": laeufe,
+            "letzter_lauf": letzter_lauf,
             "naechster": naechster,
             "gespeichert": gespeichert,
             "tage": tage,
+            "zeilen": zeilen,
+            "zeitzone": zeitzone_kuerzel(),
         },
     )

@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1>Einstellungen</h1>
-<p class="subtitle">Pipeline-Status, Konfiguration und Lauf-Historie</p>
+<p class="subtitle">Datenimport, Pipeline-Steuerung und Konfiguration</p>
 
 <section class="stats">
     <div class="stat">
@@ -16,14 +16,12 @@
         <span class="stat-label">Intervall Minuten</span>
     </div>
     <div class="stat">
-        <span class="stat-value">
-            {{ naechster.strftime("%d.%m. %H:%M") if naechster else "n. v." }}
-        </span>
-        <span class="stat-label">Nächster Lauf UTC</span>
+        <span class="stat-value">{{ naechster|lokal("%d.%m. %H:%M") }}</span>
+        <span class="stat-label">Nächster Lauf {{ zeitzone }}</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ laeufe|length }}</span>
-        <span class="stat-label">Läufe protokolliert</span>
+        <span class="stat-value">{{ letzter_lauf.status if letzter_lauf else "n. v." }}</span>
+        <span class="stat-label">Letzter Lauf</span>
     </div>
 </section>
 
@@ -33,9 +31,31 @@
 <div class="hinweis hinweis-fehler">
     Pipeline-Lauf fehlgeschlagen. Einzelheiten stehen in der Historie.
 </div>
+{% elif gespeichert == "upload" %}
+<div class="hinweis hinweis-ok">Import erfolgreich, {{ zeilen }} Tageswerte verarbeitet.</div>
+{% elif gespeichert == "upload_fehler" %}
+<div class="hinweis hinweis-fehler">Import fehlgeschlagen. Ist es ein Energy-Report?</div>
+{% elif gespeichert == "anlage_eq" %}
+<div class="hinweis hinweis-ok">
+    Anlagendaten gespeichert. Die Modulleistung hat sich geändert, alle
+    Effizienzquotienten wurden neu berechnet.
+</div>
 {% elif gespeichert %}
 <div class="hinweis hinweis-ok">Einstellungen gespeichert.</div>
 {% endif %}
+
+<div class="settings-grid">
+<section class="card">
+    <h2>Hoymiles-Export importieren</h2>
+    <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Importieren</button>
+    </form>
+    <p class="empty">
+        Energy-Report als CSV, Tageswerte in kWh. Ein erneuter Import desselben
+        Zeitraums aktualisiert die vorhandenen Werte.
+    </p>
+</section>
 
 <section class="card">
     <h2>Scheduler</h2>
@@ -81,6 +101,7 @@
         Änderung wirkt ab dem nächsten Durchlauf, ohne Neustart.
     </p>
 </section>
+</div>
 
 <section class="card">
     <h2>Lauf-Historie</h2>
@@ -89,7 +110,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Start UTC</th>
+                    <th>Start {{ zeitzone }}</th>
                     <th class="num">Dauer s</th>
                     <th>Auslöser</th>
                     <th>Status</th>
@@ -100,7 +121,7 @@
             <tbody>
                 {% for lauf in laeufe %}
                 <tr>
-                    <td class="mono">{{ lauf.started_at.strftime("%d.%m. %H:%M:%S") }}</td>
+                    <td class="mono">{{ lauf.started_at|lokal("%d.%m. %H:%M:%S") }}</td>
                     <td class="mono num">
                         {{ "%.1f"|format((lauf.finished_at - lauf.started_at).total_seconds())
                            if lauf.finished_at else "n. v." }}

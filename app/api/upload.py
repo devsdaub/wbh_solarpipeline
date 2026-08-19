@@ -13,7 +13,6 @@ UPLOAD_DIR = Path("/app/uploads")
 
 def _speichern(file: UploadFile) -> Path:
     """Legt die hochgeladene Datei im Upload-Verzeichnis ab."""
-    
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(400, "Es werden nur CSV-Dateien akzeptiert.")
 
@@ -38,13 +37,14 @@ def upload_energy_report(file: UploadFile) -> dict:
 
 @router.post("/upload/energy/form")
 def upload_energy_report_form(file: UploadFile) -> RedirectResponse:
-    """Verarbeitet den Upload aus dem Dashboard-Formular."""
+    """Verarbeitet den Upload aus dem Formular der Settings-Seite."""
     target = _speichern(file)
     try:
         ergebnis = import_energy_report(target)
     except ValueError:
-        return RedirectResponse("/?upload=fehler", status_code=303)
+        return RedirectResponse("/settings?gespeichert=upload_fehler", status_code=303)
 
     return RedirectResponse(
-        f"/?upload=ok&zeilen={ergebnis['datensaetze']}", status_code=303
+        f"/settings?gespeichert=upload&zeilen={ergebnis['datensaetze']}",
+        status_code=303,
     )
