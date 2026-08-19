@@ -3,9 +3,6 @@
 {% block title %}Dashboard · SolarPipeline{% endblock %}
 
 {% block content %}
-<h1>{{ plant_name }}</h1>
-<p class="subtitle">{{ capacity_w }} W Balkonkraftwerk · Neigung {{ tilt_deg }}° · Azimut {{ azimuth_deg }}°</p>
-
 <section class="stats">
     <div class="stat">
         <span class="stat-value">{{ tage_gesamt }}</span>
@@ -40,7 +37,15 @@
         </div>
     </section>
 
-    <section class="card voll">
+    <section class="card">
+        <h2>Monatssummen im Jahresvergleich</h2>
+        <div class="chart-box-klein">
+            <canvas id="chart-monate"></canvas>
+        </div>
+        <p class="empty">Monate mit unvollständigen Daten enthalten entsprechend weniger Messtage.</p>
+    </section>
+
+    <section class="card">
         <h2>Tagesproduktion im Jahresverlauf</h2>
         {% if heatmap %}
         <div class="table-wrap">
@@ -60,7 +65,7 @@
                     {% elif tag.wert is none %}
                     <span class="hm-zelle hm-fehlt" title="{{ tag.datum }}: keine Daten"></span>
                     {% else %}
-                    <span class="hm-zelle" style="opacity: {{ 0.08 + tag.anteil * 0.92 }}"
+                    <span class="hm-zelle hm-s{{ tag.stufe }}"
                           title="{{ tag.datum }}: {{ "%.2f"|format(tag.wert) }} kWh"></span>
                     {% endif %}
                     {% endfor %}
@@ -75,11 +80,21 @@
     </section>
 
     <section class="card">
-        <h2>Monatssummen im Jahresvergleich</h2>
-        <div class="chart-box-klein">
-            <canvas id="chart-monate"></canvas>
+        <div class="card-kopf">
+            <h2>Produktion und Wetter im Wochenverlauf</h2>
+            <div class="knopfleiste">
+                <button class="faktor-knopf aktiv" data-faktor="temperatur">Temperatur</button>
+                <button class="faktor-knopf" data-faktor="bewoelkung">Bewölkung</button>
+                <button class="faktor-knopf" data-faktor="staub">Staub</button>
+            </div>
         </div>
-        <p class="empty">Monate mit unvollständigen Daten enthalten entsprechend weniger Messtage.</p>
+        <div class="chart-box-klein">
+            <canvas id="chart-trends"></canvas>
+        </div>
+        <p class="empty">
+            Wochenmittel. Links die Produktion, rechts der gewählte Vergleichswert
+            in seiner eigenen Einheit.
+        </p>
     </section>
 
     <section class="card">

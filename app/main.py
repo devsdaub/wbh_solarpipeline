@@ -19,6 +19,7 @@ from app.filters import als_lokalzeit, zeitzone_kuerzel
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.auswertung import baue_heatmap
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
+from app.stammdaten import seed_plant_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,32 +33,10 @@ BASE_DIR = Path(__file__).resolve().parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
-    _seed_plant_config()
+    seed_plant_config()
     start_scheduler()
     yield
     stop_scheduler()
-
-
-def _seed_plant_config() -> None:
-    settings = load_plant_config()
-    with SessionLocal() as session:
-        plant = session.execute(
-            select(PlantConfig).where(PlantConfig.name == settings.name)
-        ).scalar_one_or_none()
-
-        if plant is None:
-            plant = PlantConfig(name=settings.name)
-            session.add(plant)
-
-        plant.latitude = settings.location.latitude
-        plant.longitude = settings.location.longitude
-        plant.tilt_deg = settings.panel.tilt_deg
-        plant.azimuth_deg = settings.panel.azimuth_deg
-        plant.capacity_w = settings.panel.capacity_w
-        plant.installation_date = settings.installation_date
-        plant.acquisition_cost_eur = settings.economics.acquisition_cost_eur
-        plant.subsidy_eur = settings.economics.subsidy_eur
-        session.commit()
 
 
 app = FastAPI(
@@ -121,10 +100,6 @@ def dashboard(request: Request):
         request,
         "index.html",
         {
-            "plant_name": settings.name,
-            "capacity_w": settings.panel.capacity_w,
-            "tilt_deg": settings.panel.tilt_deg,
-            "azimuth_deg": settings.panel.azimuth_deg,
             "tage": tage,
             "stunden": stunden,
             "tage_gesamt": tage_gesamt,

@@ -11,6 +11,8 @@ MONATSNAMEN = [
     "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
 ]
 
+STUFEN = 5
+
 
 def baue_heatmap(plant_id: int) -> list[dict]:
     """Erzeugt die Monatszeilen für die Kalender-Heatmap."""
@@ -45,7 +47,7 @@ def baue_heatmap(plant_id: int) -> list[dict]:
             tage.append({
                 "vorhanden": True,
                 "wert": wert,
-                "anteil": round(wert / hoechstwert, 3) if wert else 0,
+                "stufe": _stufe(wert, hoechstwert),
                 "datum": date(jahr, monat, tag).strftime("%d.%m.%Y"),
             })
 
@@ -59,3 +61,12 @@ def baue_heatmap(plant_id: int) -> list[dict]:
             monat, jahr = 1, jahr + 1
 
     return monate
+
+
+def _stufe(wert: float | None, hoechstwert: float) -> int:
+    """Ordnet einen Tageswert einer von fünf Farbstufen zu."""
+    if wert is None or hoechstwert <= 0:
+        return 0
+
+    stufe = int(wert / hoechstwert * STUFEN) + 1
+    return min(stufe, STUFEN)

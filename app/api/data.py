@@ -108,3 +108,51 @@ def monthly_series() -> dict:
             for j in jahre
         ],
     }
+
+
+REIHEN = [
+    ("produktion", DailyFact.production_kwh, "Produktion", "kWh/Tag"),
+    ("temperatur", DailyFact.avg_temperature, "Temperatur", "°C"),
+    ("bewoelkung", DailyFact.avg_cloud_cover, "Bewölkung", "%"),
+    ("staub", DailyFact.max_dust, "Saharastaub", "μg/m³"),
+]
+
+
+@router.get("/trends")
+def trend_series() -> dict:
+    """Liefert Wochenmittel der Produktion und der Wetterfaktoren."""
+    woche = func.date_trunc("week", DailyFact.date)
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+        zeilen = session.execute(
+            select(
+                woche.label("woche"),
+                *[func.avg(spalte) for _, spalte, _, _ in REIHEN],
+            )
+            .where(DailyFact.plant_id == plant_id)
+            .where(DailyFact.production_kwh.is_not(None))
+            .where(DailyFact.hours >= MIN_STUNDEN)
+            .group_by("woche")
+            .order_by("woche")
+        ).all()
+
+    if not zeilen:
+        return {"labels": [], "reihen": {}}
+
+    reihen = {}
+    for position, (schluessel, _, titel, einheit) in enumerate(REIHEN, start=1):
+        reihen[schluessel] = {
+            "titel": titel,
+            "einheit": einheit,
+            "werte": [
+                round(float(zeile[position]), 2) if zeile[position] is not None else None
+                for zeile in zeilen
+            ],
+        }
+
+    return {
+        "labels": [zeile[0].strftime("%d.%m.") for zeile in zeilen],
+        "reihen": reihen,
+    }

@@ -20,9 +20,7 @@
         <span class="stat-label">Nächster Lauf {{ zeitzone }}</span>
     </div>
     <div class="stat">
-        <span class="stat-value">
-            {{ letzter_lauf.status if letzter_lauf else "n. v." }}
-        </span>
+        <span class="stat-value">{{ letzter_lauf.status if letzter_lauf else "n. v." }}</span>
         <span class="stat-label">Letzter Lauf</span>
     </div>
 </section>
@@ -37,10 +35,16 @@
 <div class="hinweis hinweis-ok">Import erfolgreich, {{ zeilen }} Tageswerte verarbeitet.</div>
 {% elif gespeichert == "upload_fehler" %}
 <div class="hinweis hinweis-fehler">Import fehlgeschlagen. Ist es ein Energy-Report?</div>
+{% elif gespeichert == "anlage_eq" %}
+<div class="hinweis hinweis-ok">
+    Anlagendaten gespeichert. Die Modulleistung hat sich geändert, alle
+    Effizienzquotienten wurden neu berechnet.
+</div>
 {% elif gespeichert %}
 <div class="hinweis hinweis-ok">Einstellungen gespeichert.</div>
 {% endif %}
 
+<div class="settings-grid">
 <section class="card">
     <h2>Hoymiles-Export importieren</h2>
     <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
@@ -97,6 +101,7 @@
         Änderung wirkt ab dem nächsten Durchlauf, ohne Neustart.
     </p>
 </section>
+</div>
 
 <section class="card">
     <h2>Lauf-Historie</h2>
