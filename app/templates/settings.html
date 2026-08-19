@@ -16,10 +16,8 @@
         <span class="stat-label">Intervall Minuten</span>
     </div>
     <div class="stat">
-        <span class="stat-value">
-            {{ naechster.strftime("%d.%m. %H:%M") if naechster else "n. v." }}
-        </span>
-        <span class="stat-label">Nächster Lauf UTC</span>
+        <span class="stat-value">{{ naechster|lokal("%d.%m. %H:%M") }}</span>
+        <span class="stat-label">Nächster Lauf {{ zeitzone }}</span>
     </div>
     <div class="stat">
         <span class="stat-value">{{ laeufe|length }}</span>
@@ -89,7 +87,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Start UTC</th>
+                    <th>Start {{ zeitzone }}</th>
                     <th class="num">Dauer s</th>
                     <th>Auslöser</th>
                     <th>Status</th>
@@ -100,7 +98,7 @@
             <tbody>
                 {% for lauf in laeufe %}
                 <tr>
-                    <td class="mono">{{ lauf.started_at.strftime("%d.%m. %H:%M:%S") }}</td>
+                    <td class="mono">{{ lauf.started_at|lokal("%d.%m. %H:%M:%S") }}</td>
                     <td class="mono num">
                         {{ "%.1f"|format((lauf.finished_at - lauf.started_at).total_seconds())
                            if lauf.finished_at else "n. v." }}

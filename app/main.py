@@ -17,6 +17,7 @@ from app.config import load_plant_config, load_scheduler_config, load_sources_co
 from app.database import Base, SessionLocal, engine
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
+from app.filters import als_lokalzeit, zeitzone_kuerzel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,6 +67,8 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.filters["lokal"] = als_lokalzeit
+
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)
 app.include_router(upload_router)
@@ -132,6 +135,7 @@ def dashboard(request: Request, upload: str | None = None, zeilen: int | None = 
             "letzter_lauf": letzter_lauf,
             "upload": upload,
             "zeilen": zeilen,
+            "zeitzone": zeitzone_kuerzel(),
         },
     )
 
@@ -162,5 +166,6 @@ def settings_page(
             "naechster": naechster,
             "gespeichert": gespeichert,
             "tage": tage,
+            "zeitzone": zeitzone_kuerzel(),
         },
     )
