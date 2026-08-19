@@ -74,22 +74,39 @@ def start_scheduler() -> None:
 
 
 def stop_scheduler() -> None:
-    global _lock_connection
+    global _lock_connection, scheduler
 
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("Scheduler gestoppt")
+        scheduler = BackgroundScheduler(timezone="UTC")
 
     if _lock_connection is not None:
         _lock_connection.close()
         _lock_connection = None
 
 
-def reschedule(interval_minutes: int) -> None:
-    """Ändert das Intervall des laufenden Auftrags."""
-    if scheduler.running and scheduler.get_job(JOB_ID):
-        scheduler.reschedule_job(JOB_ID, trigger="interval", minutes=interval_minutes)
-        logger.info("Intervall geändert auf %s Minuten", interval_minutes)
+def apply_config() -> dict:
+    """Bringt den laufenden Scheduler auf den Stand der Konfiguration."""
+    settings = load_scheduler_config()
+    job = settings.jobs["pipeline"]
+    soll_laufen = settings.enabled and job.enabled
+
+    if not soll_laufen:
+        stop_scheduler()
+        return {"laeuft": False, "grund": "deaktiviert"}
+
+    if not scheduler.running:
+        start_scheduler()
+        return {"laeuft": scheduler.running, "grund": "gestartet"}
+
+    if scheduler.get_job(JOB_ID):
+        scheduler.reschedule_job(
+            JOB_ID, trigger="interval", minutes=job.interval_minutes
+        )
+        logger.info("Intervall geändert auf %s Minuten", job.interval_minutes)
+
+    return {"laeuft": True, "grund": "umgeplant"}
 
 
 def scheduler_status() -> dict:
