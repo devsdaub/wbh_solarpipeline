@@ -27,6 +27,31 @@
     </div>
 </section>
 
+{% if gespeichert %}
+<div class="hinweis hinweis-ok">Einstellungen gespeichert.</div>
+{% endif %}
+
+<section class="card">
+    <h2>Scheduler</h2>
+    <form action="/settings/scheduler" method="post" class="einstellungen">
+        <label>
+            <span>Intervall in Minuten</span>
+            <input type="number" name="interval_minutes" min="1" max="1440"
+                   value="{{ scheduler.jobs['pipeline'].interval_minutes }}" required>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="enabled" value="true"
+                   {{ "checked" if scheduler.enabled else "" }}>
+            <span>Automatische Ausführung aktiv</span>
+        </label>
+        <button type="submit">Speichern</button>
+    </form>
+    <p class="empty">
+        Gespeichert wird in <code>config/scheduler.yaml</code>. Die Datei bleibt
+        die Quelle der Wahrheit und kann weiterhin von Hand bearbeitet werden.
+    </p>
+</section>
+
 <section class="card">
     <h2>Lauf-Historie</h2>
     {% if laeufe %}

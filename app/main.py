@@ -12,6 +12,7 @@ from sqlalchemy import func, select, text
 from app.api.routes import router as api_router
 from app.api.upload import router as upload_router
 from app.api.data import router as data_router
+from app.api.settings import router as settings_router
 from app.config import load_plant_config, load_scheduler_config
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
 from app.database import Base, SessionLocal, engine
@@ -69,6 +70,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)
 app.include_router(upload_router)
 app.include_router(data_router)
+app.include_router(settings_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:

@@ -2,5 +2,5 @@ scheduler:
   enabled: true
   jobs:
     pipeline:
-      interval_minutes: 180
+      interval_minutes: 20
       enabled: true
