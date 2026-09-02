@@ -94,6 +94,12 @@
                    {{ "checked" if quellen.open_meteo_air.enabled else "" }}>
             <span>Open-Meteo Luftqualität</span>
         </label>
+        <label class="checkbox">
+            <input type="checkbox" name="hoymiles_api" value="true"
+                   {{ "checked" if quellen.hoymiles_api.enabled else "" }}>
+            <span>Hoymiles Cloud-API</span>
+        </label>
+
         <button type="submit">Speichern</button>
     </form>
     <p class="empty">

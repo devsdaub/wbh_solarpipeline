@@ -51,12 +51,22 @@ class SourceSettings(BaseModel):
 class SourcesSettings(BaseModel):
     open_meteo_weather: SourceSettings
     open_meteo_air: SourceSettings
+    hoymiles_api: SourceSettings
 
 
 def load_sources_config() -> SourcesSettings:
     path = CONFIG_DIR / "sources.yaml"
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     return SourcesSettings.model_validate(raw["sources"])
+
+
+def save_sources_config(settings: SourcesSettings) -> None:
+    path = CONFIG_DIR / "sources.yaml"
+    inhalt = {"sources": settings.model_dump()}
+    path.write_text(
+        yaml.safe_dump(inhalt, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
 
 
 class JobSettings(BaseModel):
@@ -84,10 +94,18 @@ def save_scheduler_config(settings: SchedulerSettings) -> None:
     )
 
 
-def save_sources_config(settings: SourcesSettings) -> None:
-    path = CONFIG_DIR / "sources.yaml"
-    inhalt = {"sources": settings.model_dump()}
-    path.write_text(
-        yaml.safe_dump(inhalt, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
-    )
+class HoymilesAuthSettings(BaseModel):
+    username: str
+    password: str
+    station_id: str
+    base_url: str = "https://neapi.hoymiles.com"
+
+
+def load_hoymiles_auth() -> HoymilesAuthSettings | None:
+    """Liest die Zugangsdaten, oder None wenn die Datei fehlt."""
+    path = CONFIG_DIR / "hoymiles_auth.yaml"
+    if not path.exists():
+        return None
+
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return HoymilesAuthSettings.model_validate(raw["hoymiles_auth"])

@@ -8,11 +8,13 @@ from app.models import PipelineRun
 from app.pipeline.ingestion import (
     _current_plant_id,
     ingest_all,
+    ingest_production,
     ingest_source,
     run_pipeline,
 )
 from app.pipeline.scheduler import scheduler_status
 from app.pipeline.transformation import aggregate_daily, find_production_gaps
+from app.pipeline.vergleich import vergleiche_produktion
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
 
@@ -39,6 +41,14 @@ def trigger_full_ingestion(
 ) -> list[dict]:
     """Ruft alle aktiven Quellen für denselben Zeitraum ab."""
     return ingest_all(start, end)
+
+
+@router.post("/ingest/production")
+def trigger_production_ingestion(
+    start: date | None = None, end: date | None = None
+) -> dict:
+    """Holt die Tagesproduktion aus der Hoymiles-Cloud."""
+    return ingest_production(start, end)
 
 
 @router.post("/transform/daily")
@@ -106,3 +116,11 @@ def pipeline_runs(limit: int = 20) -> list[dict]:
         }
         for lauf in laeufe
     ]
+
+
+@router.get("/quality/compare")
+def compare_production(start: date, end: date) -> dict:
+    """Vergleicht gespeicherte Produktionsdaten mit der Hoymiles-API."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return vergleiche_produktion(plant_id, start, end)
