@@ -90,7 +90,10 @@ def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]
 def ingest_production(
     start: date | None = None, end: date | None = None
 ) -> dict:
-    """Holt die Tagesproduktion aus der Hoymiles-Cloud nach daily_facts."""
+    """Holt die Tagesproduktion aus der Hoymiles-Cloud nach daily_facts.
+
+    Der laufende Tag wird ausgelassen, sein Ertrag wäre nur ein Zwischenstand.
+    """
     source = load_sources_config().hoymiles_api
 
     if not source.enabled:
@@ -102,10 +105,18 @@ def ingest_production(
         return {"status": "uebersprungen", "quelle": "hoymiles_api",
                 "grund": "config/hoymiles_auth.yaml fehlt"}
 
+    gestern = date.today() - timedelta(days=1)
     if end is None:
-        end = date.today()
+        end = gestern
+    else:
+        end = min(end, gestern)
+
     if start is None:
         start = end - timedelta(days=source.default_days_back)
+
+    if start > end:
+        return {"status": "uebersprungen", "quelle": "hoymiles_api",
+                "grund": "Kein abgeschlossener Tag im Zeitraum"}
 
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
