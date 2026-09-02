@@ -114,9 +114,12 @@ def backfill_weather() -> dict:
 
     datensaetze = 0
     for block in bloecke:
+        von = block["von"] - timedelta(days=1)
+        bis = min(block["bis"] + timedelta(days=1), date.today())
+
         logger.info("Backfill %s bis %s, %s Tage",
                     block["von"], block["bis"], block["tage"])
-        for ergebnis in ingest_all(block["von"], block["bis"]):
+        for ergebnis in ingest_all(von, bis):
             datensaetze += ergebnis.get("datensaetze", 0)
 
     return {
