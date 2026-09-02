@@ -8,6 +8,7 @@ from app.models import PipelineRun
 from app.pipeline.ingestion import (
     _current_plant_id,
     ingest_all,
+    ingest_production,
     ingest_source,
     run_pipeline,
 )
@@ -39,6 +40,14 @@ def trigger_full_ingestion(
 ) -> list[dict]:
     """Ruft alle aktiven Quellen für denselben Zeitraum ab."""
     return ingest_all(start, end)
+
+
+@router.post("/ingest/production")
+def trigger_production_ingestion(
+    start: date | None = None, end: date | None = None
+) -> dict:
+    """Holt die Tagesproduktion aus der Hoymiles-Cloud."""
+    return ingest_production(start, end)
 
 
 @router.post("/transform/daily")

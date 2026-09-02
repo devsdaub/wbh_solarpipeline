@@ -6,10 +6,11 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.adapters.hoymiles_api import HoymilesApiAdapter
 from app.adapters.hoymiles_csv import HoymilesEnergyAdapter
 from app.adapters.open_meteo_air import OpenMeteoAirAdapter
 from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
-from app.config import load_plant_config, load_sources_config
+from app.config import load_hoymiles_auth, load_plant_config, load_sources_config
 from app.database import SessionLocal
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.util import to_records
@@ -35,7 +36,7 @@ def _current_plant_id(session) -> int:
 def ingest_source(
     name: str, start: date | None = None, end: date | None = None
 ) -> dict:
-    """Holt die Daten einer Quelle und schreibt sie nach hourly_weather."""
+    """Holt die Daten einer Wetterquelle und schreibt sie nach hourly_weather."""
     if name not in ADAPTERS:
         return {"status": "fehler", "grund": f"Unbekannte Quelle: {name}"}
 
@@ -82,8 +83,56 @@ def ingest_source(
 
 
 def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]:
-    """Ruft alle konfigurierten Quellen für denselben Zeitraum ab."""
+    """Ruft alle konfigurierten Wetterquellen für denselben Zeitraum ab."""
     return [ingest_source(name, start, end) for name in ADAPTERS]
+
+
+def ingest_production(
+    start: date | None = None, end: date | None = None
+) -> dict:
+    """Holt die Tagesproduktion aus der Hoymiles-Cloud nach daily_facts."""
+    source = load_sources_config().hoymiles_api
+
+    if not source.enabled:
+        return {"status": "uebersprungen", "quelle": "hoymiles_api",
+                "grund": "Quelle ist deaktiviert"}
+
+    zugang = load_hoymiles_auth()
+    if zugang is None:
+        return {"status": "uebersprungen", "quelle": "hoymiles_api",
+                "grund": "config/hoymiles_auth.yaml fehlt"}
+
+    if end is None:
+        end = date.today()
+    if start is None:
+        start = end - timedelta(days=source.default_days_back)
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+        adapter = HoymilesApiAdapter(
+            load_plant_config(), source, plant_id, zugang
+        )
+        frame = adapter.fetch(start, end)
+
+        if frame.empty:
+            return {"status": "ok", "quelle": "hoymiles_api", "datensaetze": 0}
+
+        records = to_records(frame)
+        statement = insert(DailyFact).values(records)
+        statement = statement.on_conflict_do_update(
+            index_elements=["plant_id", "date"],
+            set_={"production_kwh": statement.excluded.production_kwh},
+        )
+        session.execute(statement)
+        session.commit()
+
+    return {
+        "status": "ok",
+        "quelle": "hoymiles_api",
+        "zeitraum": f"{start} bis {end}",
+        "datensaetze": len(records),
+    }
 
 
 def import_energy_report(path: Path) -> dict:
@@ -138,6 +187,8 @@ def run_pipeline(
 
     try:
         quellen = ingest_all(start, end)
+        produktion = ingest_production(start, end)
+        quellen.append(produktion)
 
         with SessionLocal() as session:
             plant_id = _current_plant_id(session)
