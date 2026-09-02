@@ -6,11 +6,9 @@ from sqlalchemy import func, select
 from app.database import SessionLocal
 from app.models import DailyFact
 from app.pipeline.ingestion import _current_plant_id
+from app.pipeline.transformation import MIN_STUNDEN
 
 router = APIRouter(prefix="/api/data", tags=["Daten"])
-
-# Ein vollständiger Tag hat 24 Stundenwerte, an der Zeitumstellung 23 oder 25.
-MIN_STUNDEN = 23
 
 
 @router.get("/daily")

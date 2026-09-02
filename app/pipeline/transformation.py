@@ -55,6 +55,26 @@ def berechne_eq(frame: pd.DataFrame, module_wp: int) -> pd.DataFrame:
     return frame
 
 
+def zu_bloecken(tage: list) -> list[dict]:
+    """Fasst aufeinanderfolgende Tage zu zusammenhängenden Blöcken zusammen."""
+    if not tage:
+        return []
+
+    bloecke = []
+    beginn = vorher = tage[0]
+    for tag in tage[1:]:
+        if (tag - vorher).days == 1:
+            vorher = tag
+        else:
+            bloecke.append({"von": beginn, "bis": vorher,
+                            "tage": (vorher - beginn).days + 1})
+            beginn = vorher = tag
+
+    bloecke.append({"von": beginn, "bis": vorher,
+                    "tage": (vorher - beginn).days + 1})
+    return bloecke
+
+
 def _lade_stundenwerte(plant_id: int) -> pd.DataFrame:
     statement = select(
         HourlyWeather.timestamp,
@@ -117,22 +137,7 @@ def finde_luecken(frame: pd.DataFrame) -> list[dict]:
     im_zeitraum = frame[
         frame["date"].between(gemessen["date"].min(), gemessen["date"].max())
     ]
-    tage = sorted(im_zeitraum[im_zeitraum["production_kwh"].isna()]["date"])
-    if not tage:
-        return []
-
-    luecken = []
-    beginn = vorher = tage[0]
-    for tag in tage[1:]:
-        if (tag - vorher).days == 1:
-            vorher = tag
-        else:
-            luecken.append({"von": beginn, "bis": vorher,
-                            "tage": (vorher - beginn).days + 1})
-            beginn = vorher = tag
-    luecken.append({"von": beginn, "bis": vorher,
-                    "tage": (vorher - beginn).days + 1})
-    return luecken
+    return zu_bloecken(sorted(im_zeitraum[im_zeitraum["production_kwh"].isna()]["date"]))
 
 
 def finde_wetterluecken(frame: pd.DataFrame) -> list[dict]:
@@ -141,22 +146,9 @@ def finde_wetterluecken(frame: pd.DataFrame) -> list[dict]:
         return []
 
     unvollstaendig = frame["hours"].isna() | (frame["hours"] < MIN_STUNDEN)
-    tage = sorted(frame[frame["production_kwh"].notna() & unvollstaendig]["date"])
-    if not tage:
-        return []
-
-    bloecke = []
-    beginn = vorher = tage[0]
-    for tag in tage[1:]:
-        if (tag - vorher).days == 1:
-            vorher = tag
-        else:
-            bloecke.append({"von": beginn, "bis": vorher,
-                            "tage": (vorher - beginn).days + 1})
-            beginn = vorher = tag
-    bloecke.append({"von": beginn, "bis": vorher,
-                    "tage": (vorher - beginn).days + 1})
-    return bloecke
+    return zu_bloecken(
+        sorted(frame[frame["production_kwh"].notna() & unvollstaendig]["date"])
+    )
 
 
 def find_production_gaps(plant_id: int) -> dict:
@@ -168,3 +160,12 @@ def find_production_gaps(plant_id: int) -> dict:
         logger.warning("Produktionslücken: %s Tage in %s Block/Blöcken",
                        fehlend, len(luecken))
     return {"fehlende_tage": fehlend, "luecken": luecken}
+
+
+def find_weather_gaps(plant_id: int) -> dict:
+    """Findet Tage mit Produktion, aber ohne vollständige Wetterdaten."""
+    bloecke = finde_wetterluecken(lade_tageslage(plant_id))
+    return {
+        "fehlende_tage": sum(block["tage"] for block in bloecke),
+        "luecken": bloecke,
+    }
