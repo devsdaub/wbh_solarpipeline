@@ -14,6 +14,7 @@ from app.pipeline.ingestion import (
 )
 from app.pipeline.scheduler import scheduler_status
 from app.pipeline.transformation import aggregate_daily, find_production_gaps
+from app.pipeline.vergleich import vergleiche_produktion
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
 
@@ -115,3 +116,11 @@ def pipeline_runs(limit: int = 20) -> list[dict]:
         }
         for lauf in laeufe
     ]
+
+
+@router.get("/quality/compare")
+def compare_production(start: date, end: date) -> dict:
+    """Vergleicht gespeicherte Produktionsdaten mit der Hoymiles-API."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return vergleiche_produktion(plant_id, start, end)
