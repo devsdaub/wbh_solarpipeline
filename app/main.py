@@ -18,7 +18,9 @@ from app.database import Base, SessionLocal, engine
 from app.filters import als_lokalzeit, zeitzone_kuerzel
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.auswertung import baue_heatmap
+from app.pipeline.ingestion import _current_plant_id
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
+from app.pipeline.transformation import find_weather_gaps
 from app.stammdaten import seed_plant_config
 
 logging.basicConfig(
@@ -121,6 +123,8 @@ def settings_page(
     status = scheduler_status()
 
     with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
         laeufe = session.execute(
             select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
         ).scalars().all()
@@ -138,6 +142,7 @@ def settings_page(
             "status": status,
             "scheduler": load_scheduler_config(),
             "quellen": load_sources_config(),
+            "wetterluecken": find_weather_gaps(plant_id),
             "laeufe": laeufe,
             "letzter_lauf": letzter_lauf,
             "naechster": naechster,
