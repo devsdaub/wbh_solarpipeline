@@ -16,9 +16,11 @@ from app.api.upload import router as upload_router
 from app.config import load_plant_config, load_scheduler_config, load_sources_config
 from app.database import Base, SessionLocal, engine
 from app.filters import als_lokalzeit, zeitzone_kuerzel
-from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
+from app.models import DailyFact, PipelineRun, PlantConfig
 from app.pipeline.auswertung import baue_heatmap
+from app.pipeline.ingestion import _current_plant_id
 from app.pipeline.scheduler import scheduler_status, start_scheduler, stop_scheduler
+from app.pipeline.transformation import find_weather_gaps
 from app.stammdaten import seed_plant_config
 
 logging.basicConfig(
@@ -85,12 +87,10 @@ def dashboard(request: Request):
             .limit(21)
         ).scalars().all()
 
-        stunden, tage_gesamt, summe_kwh, eq_mittel = session.execute(
+        tage_gesamt, tage_mit_produktion, summe_kwh, eq_mittel = session.execute(
             select(
-                select(func.count(HourlyWeather.id))
-                .where(HourlyWeather.plant_id == plant_id)
-                .scalar_subquery(),
                 func.count(DailyFact.id),
+                func.count(DailyFact.production_kwh),
                 func.sum(DailyFact.production_kwh),
                 func.avg(DailyFact.eq),
             ).where(DailyFact.plant_id == plant_id)
@@ -101,8 +101,8 @@ def dashboard(request: Request):
         "index.html",
         {
             "tage": tage,
-            "stunden": stunden,
             "tage_gesamt": tage_gesamt,
+            "tage_mit_produktion": tage_mit_produktion,
             "summe_kwh": summe_kwh,
             "eq_mittel": eq_mittel,
             "heatmap": baue_heatmap(plant_id),
@@ -121,6 +121,8 @@ def settings_page(
     status = scheduler_status()
 
     with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
         laeufe = session.execute(
             select(PipelineRun).order_by(PipelineRun.id.desc()).limit(25)
         ).scalars().all()
@@ -138,6 +140,7 @@ def settings_page(
             "status": status,
             "scheduler": load_scheduler_config(),
             "quellen": load_sources_config(),
+            "wetterluecken": find_weather_gaps(plant_id),
             "laeufe": laeufe,
             "letzter_lauf": letzter_lauf,
             "naechster": naechster,

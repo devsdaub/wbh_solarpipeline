@@ -6,6 +6,7 @@ import pandera.pandas as pa
 
 from app.adapters.base import SourceAdapter
 from app.config import PlantSettings, SourceSettings
+from app.retry import mit_wiederholung
 
 
 class OpenMeteoAdapter(SourceAdapter):
@@ -39,8 +40,9 @@ class OpenMeteoAdapter(SourceAdapter):
             **self.extra_params(),
         }
 
-        response = httpx.get(self.source.url, params=params, timeout=30)
-        response.raise_for_status()
+        response = mit_wiederholung(
+            lambda: httpx.get(self.source.url, params=params, timeout=30)
+        )
 
         frame = pd.DataFrame(response.json()["hourly"])
         # Die API liefert Zeitstempel ohne Zeitzonenangabe. Da timezone=UTC

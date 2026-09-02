@@ -27,6 +27,11 @@
 
 {% if gespeichert == "lauf" %}
 <div class="hinweis hinweis-ok">Pipeline-Lauf abgeschlossen, {{ tage }} Tage verarbeitet.</div>
+{% elif gespeichert == "backfill" %}
+<div class="hinweis hinweis-ok">
+    {% if tage %}Wetterdaten für {{ tage }} Tage nachgeladen.
+    {% else %}Es fehlten keine Wetterdaten.{% endif %}
+</div>
 {% elif gespeichert == "fehler" %}
 <div class="hinweis hinweis-fehler">
     Pipeline-Lauf fehlgeschlagen. Einzelheiten stehen in der Historie.
@@ -58,7 +63,7 @@
 </section>
 
 <section class="card">
-    <h2>Scheduler</h2>
+    <h2>Pipeline</h2>
     <form action="/settings/scheduler" method="post" class="einstellungen">
         <label>
             <span>Intervall in Minuten</span>
@@ -75,9 +80,17 @@
     <form action="/settings/run" method="post" class="einstellungen">
         <button type="submit">Pipeline jetzt ausführen</button>
     </form>
+    <form action="/settings/backfill" method="post" class="einstellungen">
+        <button type="submit">Fehlende Wetterdaten nachladen</button>
+    </form>
     <p class="empty">
-        Gespeichert wird in <code>config/scheduler.yaml</code>. Die Datei bleibt
-        die Quelle der Wahrheit und kann weiterhin von Hand bearbeitet werden.
+        {% if wetterluecken.fehlende_tage %}
+        Für {{ wetterluecken.fehlende_tage }} Tage mit Produktion fehlen noch
+        vollständige Wetterdaten.
+        {% else %}
+        Zu allen Tagen mit Produktion liegen vollständige Wetterdaten vor.
+        {% endif %}
+        Gespeichert wird in <code>config/scheduler.yaml</code>.
     </p>
 </section>
 

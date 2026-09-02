@@ -9,6 +9,7 @@ import pandas as pd
 from app.adapters.base import SourceAdapter
 from app.adapters.hoymiles_auth import HoymilesAuth, api_ok
 from app.config import HoymilesAuthSettings, PlantSettings, SourceSettings
+from app.retry import mit_wiederholung
 from app.schemas import ENERGY_REPORT_SCHEMA
 
 logger = logging.getLogger(__name__)
@@ -106,10 +107,10 @@ class HoymilesApiAdapter(SourceAdapter):
     def _post(self, client: httpx.Client, pfad: str, rumpf: dict) -> httpx.Response:
         """Sendet die Anfrage und meldet sich bei abgelaufenem Token neu an."""
         for versuch in range(2):
-            antwort = client.post(
-                f"{self.base_url}{pfad}", json=rumpf, headers=self._auth.header()
+            kopf = self._auth.header()
+            antwort = mit_wiederholung(
+                lambda: client.post(f"{self.base_url}{pfad}", json=rumpf, headers=kopf)
             )
-            antwort.raise_for_status()
 
             if "json" in antwort.headers.get("content-type", ""):
                 daten = antwort.json()

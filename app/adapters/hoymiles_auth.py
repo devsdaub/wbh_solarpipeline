@@ -5,6 +5,8 @@ from base64 import b64encode
 
 import httpx
 
+from app.retry import mit_wiederholung
+
 logger = logging.getLogger(__name__)
 
 TOKEN_TTL = 23 * 3600
@@ -71,11 +73,12 @@ class HoymilesAuth:
 
     def _anmelden(self) -> None:
         with httpx.Client(timeout=30) as client:
-            antwort = client.post(
-                f"{self._base_url}/iam/pub/3/auth/pre-insp",
-                json={"u": self._username},
+            antwort = mit_wiederholung(
+                lambda: client.post(
+                    f"{self._base_url}/iam/pub/3/auth/pre-insp",
+                    json={"u": self._username},
+                )
             )
-            antwort.raise_for_status()
             vorab = antwort.json()
 
             daten = vorab.get("data") or {}
@@ -91,11 +94,12 @@ class HoymilesAuth:
             else:
                 hash_wert = _hash_legacy(self._password)
 
-            antwort = client.post(
-                f"{self._base_url}/iam/pub/3/auth/login",
-                json={"u": self._username, "ch": hash_wert, "n": nonce},
+            antwort = mit_wiederholung(
+                lambda: client.post(
+                    f"{self._base_url}/iam/pub/3/auth/login",
+                    json={"u": self._username, "ch": hash_wert, "n": nonce},
+                )
             )
-            antwort.raise_for_status()
             login = antwort.json()
 
             if not api_ok(login.get("status")):

@@ -7,13 +7,18 @@ from app.database import SessionLocal
 from app.models import PipelineRun
 from app.pipeline.ingestion import (
     _current_plant_id,
+    backfill_weather,
     ingest_all,
     ingest_production,
     ingest_source,
     run_pipeline,
 )
 from app.pipeline.scheduler import scheduler_status
-from app.pipeline.transformation import aggregate_daily, find_production_gaps
+from app.pipeline.transformation import (
+    aggregate_daily,
+    find_production_gaps,
+    find_weather_gaps,
+)
 from app.pipeline.vergleich import vergleiche_produktion
 
 router = APIRouter(prefix="/api", tags=["Pipeline"])
@@ -51,6 +56,12 @@ def trigger_production_ingestion(
     return ingest_production(start, end)
 
 
+@router.post("/backfill/weather")
+def trigger_backfill() -> dict:
+    """Lädt Wetterdaten für Tage nach, an denen nur Produktion vorliegt."""
+    return backfill_weather()
+
+
 @router.post("/transform/daily")
 def trigger_daily_aggregation() -> dict:
     """Verdichtet die Stundenwerte zu Tageswerten."""
@@ -65,6 +76,14 @@ def report_production_gaps() -> dict:
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
     return find_production_gaps(plant_id)
+
+
+@router.get("/quality/weather-gaps")
+def report_weather_gaps() -> dict:
+    """Meldet Tage mit Produktion, aber ohne vollständige Wetterdaten."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return find_weather_gaps(plant_id)
 
 
 @router.post("/pipeline/run")

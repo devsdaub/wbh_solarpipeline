@@ -6,11 +6,11 @@
 <section class="stats">
     <div class="stat">
         <span class="stat-value">{{ tage_gesamt }}</span>
-        <span class="stat-label">Tage in daily_facts</span>
+        <span class="stat-label">Tage mit Daten</span>
     </div>
     <div class="stat">
-        <span class="stat-value">{{ stunden }}</span>
-        <span class="stat-label">Stundenwerte</span>
+        <span class="stat-value">{{ tage_mit_produktion }}</span>
+        <span class="stat-label">Tage mit Produktion</span>
     </div>
     <div class="stat">
         <span class="stat-value">{{ "%.0f"|format(summe_kwh) if summe_kwh else "n. v." }}</span>

@@ -249,6 +249,11 @@ h1 {
     font-size: 0.8rem;
 }
 
+.data-table th.num,
+.data-table td.num {
+    text-align: right;
+}
+
 .num {
     text-align: right;
 }

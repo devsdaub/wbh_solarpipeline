@@ -7,7 +7,7 @@ from app.config import (
     save_scheduler_config,
     save_sources_config,
 )
-from app.pipeline.ingestion import run_pipeline
+from app.pipeline.ingestion import backfill_weather, run_pipeline
 from app.pipeline.scheduler import apply_config
 
 router = APIRouter(prefix="/settings", tags=["Einstellungen"])
@@ -46,7 +46,6 @@ def update_sources(
     return RedirectResponse("/settings?gespeichert=quellen", status_code=303)
 
 
-
 @router.post("/run")
 def trigger_run_from_form() -> RedirectResponse:
     """Löst einen Pipeline-Lauf aus und kehrt zur Settings-Seite zurück."""
@@ -57,3 +56,16 @@ def trigger_run_from_form() -> RedirectResponse:
 
     tage = ergebnis["aggregation"].get("geschriebene_tage", 0)
     return RedirectResponse(f"/settings?gespeichert=lauf&tage={tage}", status_code=303)
+
+
+@router.post("/backfill")
+def trigger_backfill_from_form() -> RedirectResponse:
+    """Lädt fehlende Wetterdaten nach und kehrt zur Settings-Seite zurück."""
+    try:
+        ergebnis = backfill_weather()
+    except Exception:
+        return RedirectResponse("/settings?gespeichert=fehler", status_code=303)
+
+    return RedirectResponse(
+        f"/settings?gespeichert=backfill&tage={ergebnis['tage']}", status_code=303
+    )
