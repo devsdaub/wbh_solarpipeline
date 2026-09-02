@@ -13,6 +13,12 @@ from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_hoymiles_auth, load_plant_config, load_sources_config
 from app.database import SessionLocal
 from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
+from app.pipeline.transformation import (
+    aggregate_daily,
+    find_production_gaps,
+    finde_wetterluecken,
+    lade_tageslage,
+)
 from app.pipeline.util import to_records
 
 logger = logging.getLogger(__name__)
@@ -23,6 +29,9 @@ ADAPTERS = {
 }
 
 KEY_COLUMNS = ("plant_id", "timestamp")
+
+# Obergrenze je Lauf. Der Rest kommt beim nächsten Durchlauf dran.
+BACKFILL_MAX_BLOECKE = 12
 
 
 def _current_plant_id(session) -> int:
@@ -85,6 +94,37 @@ def ingest_source(
 def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]:
     """Ruft alle konfigurierten Wetterquellen für denselben Zeitraum ab."""
     return [ingest_source(name, start, end) for name in ADAPTERS]
+
+
+def backfill_weather() -> dict:
+    """Lädt Wetterdaten für Tage nach, an denen nur Produktion vorliegt."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+    bloecke = finde_wetterluecken(lade_tageslage(plant_id))
+    if not bloecke:
+        return {"status": "ok", "bloecke": 0, "tage": 0, "datensaetze": 0}
+
+    if len(bloecke) > BACKFILL_MAX_BLOECKE:
+        logger.warning(
+            "%s Lückenblöcke gefunden, davon werden %s nachgeladen",
+            len(bloecke), BACKFILL_MAX_BLOECKE,
+        )
+        bloecke = bloecke[:BACKFILL_MAX_BLOECKE]
+
+    datensaetze = 0
+    for block in bloecke:
+        logger.info("Backfill %s bis %s, %s Tage",
+                    block["von"], block["bis"], block["tage"])
+        for ergebnis in ingest_all(block["von"], block["bis"]):
+            datensaetze += ergebnis.get("datensaetze", 0)
+
+    return {
+        "status": "ok",
+        "bloecke": len(bloecke),
+        "tage": sum(block["tage"] for block in bloecke),
+        "datensaetze": datensaetze,
+    }
 
 
 def ingest_production(
@@ -183,9 +223,6 @@ def run_pipeline(
     trigger: str = "manuell",
 ) -> dict:
     """Ruft alle Quellen ab und verdichtet anschliessend auf Tageswerte."""
-    # lokal importiert, sonst Zirkelbezug mit transformation.py
-    from app.pipeline.transformation import aggregate_daily, find_production_gaps
-
     lauf = PipelineRun(
         started_at=datetime.now(timezone.utc),
         trigger=trigger,
@@ -201,6 +238,8 @@ def run_pipeline(
         produktion = ingest_production(start, end)
         quellen.append(produktion)
 
+        nachgeladen = backfill_weather()
+
         with SessionLocal() as session:
             plant_id = _current_plant_id(session)
 
@@ -210,13 +249,15 @@ def run_pipeline(
         ergebnis = {
             "status": "ok",
             "quellen": quellen,
+            "backfill": nachgeladen,
             "aggregation": aggregation,
             "datenqualitaet": luecken,
         }
         _lauf_abschliessen(
             lauf_id,
             status="ok",
-            records=sum(q.get("datensaetze", 0) for q in quellen),
+            records=sum(q.get("datensaetze", 0) for q in quellen)
+            + nachgeladen["datensaetze"],
             days=aggregation.get("geschriebene_tage"),
         )
         return ergebnis

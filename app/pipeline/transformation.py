@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 LOCAL_TZ = "Europe/Berlin"
 
+# Ein vollständiger Tag hat 24 Stundenwerte, an der Zeitumstellung 23 oder 25.
+MIN_STUNDEN = 23
+
 DAILY_UPDATE_COLUMNS = (
     "gti_kwh",
     "avg_temperature",
@@ -71,6 +74,14 @@ def _lade_produktion(plant_id: int) -> pd.DataFrame:
     return pd.read_sql(statement, engine)
 
 
+def lade_tageslage(plant_id: int) -> pd.DataFrame:
+    """Datum, Produktion und Zahl der Stundenwerte je Tag."""
+    statement = select(
+        DailyFact.date, DailyFact.production_kwh, DailyFact.hours
+    ).where(DailyFact.plant_id == plant_id)
+    return pd.read_sql(statement, engine)
+
+
 def aggregate_daily(plant_id: int) -> dict:
     """Verdichtet die Stundenwerte zu Tageswerten in daily_facts."""
     module_wp = load_plant_config().panel.module_capacity_wp
@@ -122,6 +133,30 @@ def finde_luecken(frame: pd.DataFrame) -> list[dict]:
     luecken.append({"von": beginn, "bis": vorher,
                     "tage": (vorher - beginn).days + 1})
     return luecken
+
+
+def finde_wetterluecken(frame: pd.DataFrame) -> list[dict]:
+    """Tage mit Produktionswert, aber ohne vollständige Stundenwerte."""
+    if frame.empty:
+        return []
+
+    unvollstaendig = frame["hours"].isna() | (frame["hours"] < MIN_STUNDEN)
+    tage = sorted(frame[frame["production_kwh"].notna() & unvollstaendig]["date"])
+    if not tage:
+        return []
+
+    bloecke = []
+    beginn = vorher = tage[0]
+    for tag in tage[1:]:
+        if (tag - vorher).days == 1:
+            vorher = tag
+        else:
+            bloecke.append({"von": beginn, "bis": vorher,
+                            "tage": (vorher - beginn).days + 1})
+            beginn = vorher = tag
+    bloecke.append({"von": beginn, "bis": vorher,
+                    "tage": (vorher - beginn).days + 1})
+    return bloecke
 
 
 def find_production_gaps(plant_id: int) -> dict:
