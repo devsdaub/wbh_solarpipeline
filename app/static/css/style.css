@@ -299,6 +299,11 @@ h1 {
     color: #b91c1c;
 }
 
+.status-teilweise {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
 .status-laeuft {
     background: #fef3c7;
     color: #a16207;

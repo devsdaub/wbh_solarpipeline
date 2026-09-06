@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+from pandera.errors import SchemaError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -65,7 +66,15 @@ def ingest_source(
         plant_id = _current_plant_id(session)
 
         adapter = ADAPTERS[name](plant_settings, source, plant_id)
-        frame = adapter.fetch(start, end)
+
+        try:
+            frame = adapter.fetch(start, end)
+        except SchemaError as fehler:
+            logger.error("Validierung fehlgeschlagen für %s: %s", name, fehler)
+            return {"status": "ungueltig", "quelle": name,
+                    "zeitraum": f"{start} bis {end}",
+                    "grund": str(fehler).splitlines()[0][:300]}
+
         records = to_records(frame)
 
         update_columns = [
@@ -167,7 +176,13 @@ def ingest_production(
         adapter = HoymilesApiAdapter(
             load_plant_config(), source, plant_id, zugang
         )
-        frame = adapter.fetch(start, end)
+
+        try:
+            frame = adapter.fetch(start, end)
+        except SchemaError as fehler:
+            logger.error("Validierung fehlgeschlagen für hoymiles_api: %s", fehler)
+            return {"status": "ungueltig", "quelle": "hoymiles_api",
+                    "grund": str(fehler).splitlines()[0][:300]}
 
         if frame.empty:
             return {"status": "ok", "quelle": "hoymiles_api", "datensaetze": 0}
@@ -249,8 +264,10 @@ def run_pipeline(
         aggregation = aggregate_daily(plant_id)
         luecken = find_production_gaps(plant_id)
 
+        ungueltig = [q["quelle"] for q in quellen if q["status"] == "ungueltig"]
+
         ergebnis = {
-            "status": "ok",
+            "status": "teilweise" if ungueltig else "ok",
             "quellen": quellen,
             "backfill": nachgeladen,
             "aggregation": aggregation,
@@ -258,10 +275,11 @@ def run_pipeline(
         }
         _lauf_abschliessen(
             lauf_id,
-            status="ok",
+            status=ergebnis["status"],
             records=sum(q.get("datensaetze", 0) for q in quellen)
             + nachgeladen["datensaetze"],
             days=aggregation.get("geschriebene_tage"),
+            error=f"Ungültige Daten: {', '.join(ungueltig)}" if ungueltig else None,
         )
         return ergebnis
 
