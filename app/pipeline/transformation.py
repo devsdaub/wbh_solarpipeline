@@ -134,10 +134,12 @@ def finde_luecken(frame: pd.DataFrame) -> list[dict]:
     if gemessen.empty:
         return []
 
-    im_zeitraum = frame[
-        frame["date"].between(gemessen["date"].min(), gemessen["date"].max())
-    ]
-    return zu_bloecken(sorted(im_zeitraum[im_zeitraum["production_kwh"].isna()]["date"]))
+    kalender = pd.date_range(gemessen["date"].min(), gemessen["date"].max(), freq="D")
+    vorhanden = set(gemessen["date"])
+
+    return zu_bloecken([
+        tag.date() for tag in kalender if tag.date() not in vorhanden
+    ])
 
 
 def finde_wetterluecken(frame: pd.DataFrame) -> list[dict]:
