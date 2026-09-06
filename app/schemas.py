@@ -1,4 +1,9 @@
+import logging
+
 import pandera.pandas as pa
+from pandera.errors import SchemaErrors
+
+logger = logging.getLogger(__name__)
 
 HOURLY_WEATHER_SCHEMA = pa.DataFrameSchema(
     {
@@ -36,3 +41,34 @@ ENERGY_REPORT_SCHEMA = pa.DataFrameSchema(
     strict=True,
     coerce=True,
 )
+
+
+def validiere_nachsichtig(schema, frame, quelle: str):
+    """Validiert. Unplausible Einzelwerte werden NULL, die Zeile bleibt."""
+    try:
+        return schema.validate(frame, lazy=True)
+    except SchemaErrors as fehler:
+        bereinigt = _werte_verwerfen(schema, frame, fehler, quelle)
+
+    return schema.validate(bereinigt, lazy=True)
+
+
+def _werte_verwerfen(schema, frame, fehler: SchemaErrors, quelle: str):
+    faelle = fehler.failure_cases
+
+    nullbar = {name for name, spalte in schema.columns.items() if spalte.nullable}
+    heilbar = faelle[faelle["index"].notna() & faelle["column"].isin(nullbar)]
+
+    if len(heilbar) < len(faelle):
+        raise fehler
+
+    bereinigt = frame.copy()
+    for spalte, gruppe in heilbar.groupby("column"):
+        zeilen = gruppe["index"].tolist()
+        bereinigt.loc[zeilen, spalte] = None
+        logger.warning(
+            "%s: %s Wert(e) in %s verworfen, Beispiel %s",
+            quelle, len(zeilen), spalte, gruppe["failure_case"].iloc[0],
+        )
+
+    return bereinigt
