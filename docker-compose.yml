@@ -25,6 +25,7 @@ services:
       - "8008:8000"
     volumes:
       - ./app:/app/app
+      - ./tests:/app/tests
       - ./config:/app/config
       - ./uploads:/app/uploads
     environment:
