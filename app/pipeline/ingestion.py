@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
-from pandera.errors import SchemaError
+from pandera.errors import SchemaError, SchemaErrors
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -202,6 +202,29 @@ def ingest_production(
         "zeitraum": f"{start} bis {end}",
         "datensaetze": len(records),
     }
+
+
+def hoymiles_realtime() -> dict:
+    """Liest die aktuelle Leistung direkt aus der Hoymiles-Cloud.
+    """
+    zugang = load_hoymiles_auth()
+    if zugang is None:
+        return {"status": "uebersprungen", "quelle": "hoymiles_api",
+                "grund": "config/hoymiles_auth.yaml fehlt"}
+
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+    adapter = HoymilesApiAdapter(
+        load_plant_config(), load_sources_config().hoymiles_api, plant_id, zugang
+    )
+    werte = adapter.realtime()
+
+    if werte is None:
+        return {"status": "fehler", "quelle": "hoymiles_api",
+                "grund": "Keine verwertbare Antwort der Cloud"}
+
+    return {"status": "ok", "quelle": "hoymiles_api", **werte}
 
 
 def import_energy_report(path: Path) -> dict:

@@ -106,10 +106,12 @@ class HoymilesApiAdapter(SourceAdapter):
 
     def _post(self, client: httpx.Client, pfad: str, rumpf: dict) -> httpx.Response:
         """Sendet die Anfrage und meldet sich bei abgelaufenem Token neu an."""
-        for versuch in range(2):
+        for _ in range(2):
             kopf = self._auth.header()
             antwort = mit_wiederholung(
-                lambda: client.post(f"{self.base_url}{pfad}", json=rumpf, headers=kopf)
+                lambda k=kopf: client.post(
+                    f"{self.base_url}{pfad}", json=rumpf, headers=k
+                )
             )
 
             if "json" in antwort.headers.get("content-type", ""):
@@ -168,7 +170,7 @@ class HoymilesApiAdapter(SourceAdapter):
             return []
 
         eintraege = []
-        for label, wattstunden in zip(labels, werte):
+        for label, wattstunden in zip(labels, werte, strict=False):
             try:
                 tag = date(monat.year, monat.month, int(label))
             except (ValueError, OverflowError):

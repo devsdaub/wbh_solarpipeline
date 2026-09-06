@@ -4,9 +4,9 @@ from datetime import date
 import pandas as pd
 from sqlalchemy import select
 
-from app.config import load_hoymiles_auth, load_plant_config, load_sources_config
 from app.adapters.hoymiles_api import HoymilesApiAdapter
-from app.database import SessionLocal, engine
+from app.config import load_hoymiles_auth, load_plant_config, load_sources_config
+from app.database import engine
 from app.models import DailyFact
 
 logger = logging.getLogger(__name__)

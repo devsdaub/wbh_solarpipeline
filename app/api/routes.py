@@ -8,11 +8,13 @@ from app.models import PipelineRun
 from app.pipeline.ingestion import (
     _current_plant_id,
     backfill_weather,
+    hoymiles_realtime,
     ingest_all,
     ingest_production,
     ingest_source,
     run_pipeline,
 )
+from app.pipeline.pruefung import qualitaetsbericht
 from app.pipeline.scheduler import scheduler_status
 from app.pipeline.transformation import (
     aggregate_daily,
@@ -62,6 +64,12 @@ def trigger_backfill() -> dict:
     return backfill_weather()
 
 
+@router.get("/hoymiles/realtime")
+def report_realtime() -> dict:
+    """Aktuelle Leistung und Tagesertrag aus der Hoymiles-Cloud."""
+    return hoymiles_realtime()
+
+
 @router.post("/transform/daily")
 def trigger_daily_aggregation() -> dict:
     """Verdichtet die Stundenwerte zu Tageswerten."""
@@ -84,6 +92,14 @@ def report_weather_gaps() -> dict:
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
     return find_weather_gaps(plant_id)
+
+
+@router.get("/quality/report")
+def report_quality() -> dict:
+    """Meldet fachliche Befunde und den Füllgrad der Spalten."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+    return qualitaetsbericht(plant_id)
 
 
 @router.post("/pipeline/run")
