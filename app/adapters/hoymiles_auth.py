@@ -33,8 +33,10 @@ def _hash_legacy(passwort: str) -> str:
 def _hash_argon2(passwort: str, salt_hex: str) -> str:
     try:
         from argon2.low_level import Type, hash_secret_raw
-    except ImportError:
-        raise HoymilesAuthError("argon2-cffi fehlt in den Abhängigkeiten")
+    except ImportError as fehler:
+        raise HoymilesAuthError(
+            "argon2-cffi fehlt in den Abhängigkeiten"
+        ) from fehler
 
     roh = hash_secret_raw(
         secret=passwort.encode("utf-8"),

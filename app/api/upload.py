@@ -32,7 +32,7 @@ def upload_energy_report(file: UploadFile) -> dict:
     try:
         return import_energy_report(target)
     except ValueError as fehler:
-        raise HTTPException(422, str(fehler))
+        raise HTTPException(422, str(fehler)) from fehler
 
 
 @router.post("/upload/energy/form")
