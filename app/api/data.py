@@ -136,9 +136,8 @@ def trend_series() -> dict:
             .order_by("woche")
         ).all()
 
-    if not zeilen:
-        return {"labels": [], "reihen": {}}
-
+    # Auch ohne Daten dieselbe Form liefern. Das Diagramm greift fest auf
+    # reihen.produktion zu und bricht sonst bei leerer Datenbank ab.
     reihen = {}
     for position, (schluessel, _, titel, einheit) in enumerate(REIHEN, start=1):
         reihen[schluessel] = {
