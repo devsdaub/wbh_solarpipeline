@@ -169,18 +169,33 @@ class HoymilesApiAdapter(SourceAdapter):
             logger.warning("Keine Daten für %s", monat.strftime("%Y-%m"))
             return []
 
-        eintraege = []
+        eintraege: list[dict] = []
+        uebersprungen: list[date] = []
         for label, wattstunden in zip(labels, werte, strict=False):
             try:
                 tag = date(monat.year, monat.month, int(label))
             except (ValueError, OverflowError):
                 continue
 
-            if von <= tag <= bis:
-                eintraege.append({
-                    "date": pd.Timestamp(tag),
-                    "production_kwh": round(float(wattstunden) / 1000, 4),
-                })
+            if not von <= tag <= bis:
+                continue
+
+            kwh = round(float(wattstunden) / 1000, 4)
+
+            # Exakt 0 heisst hier "nichts empfangen", nicht "nichts erzeugt".
+            # Belegt an den Tagen vor der Inbetriebnahme, die alle auf 0
+            # stehen, waehrend der Installationstag selbst 0,007 kWh zeigt.
+            # Der Tag wird ausgelassen, damit er als Luecke erkennbar bleibt.
+            if kwh <= 0:
+                uebersprungen.append(tag)
+                continue
+
+            eintraege.append({"date": pd.Timestamp(tag), "production_kwh": kwh})
+
+        if uebersprungen:
+            logger.info("%s: %s Tage ohne Messwert ausgelassen (%s bis %s)",
+                        monat.strftime("%Y-%m"), len(uebersprungen),
+                        min(uebersprungen), max(uebersprungen))
 
         return eintraege
 
