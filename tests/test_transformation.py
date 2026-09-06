@@ -4,6 +4,7 @@ import pandas as pd
 
 from app.pipeline.transformation import (
     aggregate_hourly,
+    finde_luecken,
     finde_wetterluecken,
     zu_bloecken,
 )
@@ -74,6 +75,30 @@ def test_zu_bloecken_trennt_bei_luecke():
 
     assert [b["tage"] for b in bloecke] == [2, 2, 1]
     assert bloecke[1]["von"] == date(2026, 3, 9)
+
+
+def test_luecke_ohne_zeile_wird_gefunden():
+    """Zu einem Tag ganz ohne Wetterdaten gibt es keine Zeile in
+    daily_facts. Wird nur gegen die vorhandenen Zeilen gesucht, bleibt so
+    eine Lücke unsichtbar, obwohl gerade dort die Produktion fehlt."""
+    frame = pd.DataFrame({
+        "date": [date(2026, 3, 1), date(2026, 3, 5)],
+        "production_kwh": [1.0, 2.0],
+    })
+
+    luecken = finde_luecken(frame)
+
+    assert luecken == [{"von": date(2026, 3, 2), "bis": date(2026, 3, 4), "tage": 3}]
+
+
+def test_luecke_nur_innerhalb_des_messzeitraums():
+    """Was nach der letzten Messung kommt, fehlt nicht, es ist noch nicht da."""
+    frame = pd.DataFrame({
+        "date": [date(2026, 3, 1), date(2026, 3, 3)],
+        "production_kwh": [1.0, None],
+    })
+
+    assert finde_luecken(frame) == []
 
 
 def test_wetterluecke_braucht_einen_produktionswert():

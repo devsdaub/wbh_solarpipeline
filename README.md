@@ -70,8 +70,8 @@ einen Test.
 
 Der Parameter wird von der Archiv-API akzeptiert, kommt aber immer leer
 zurück (Einheit ist sogar `undefined`). Die Spalte ist deshalb durchgehend
-NULL, in keiner einzigen von knapp 6000 Zeilen steht ein Wert. Gibt es
-nur in der Forecast-API.
+NULL, in keiner einzigen von 12000 Zeilen steht ein Wert. Gibt es nur in
+der Forecast-API.
 
 Ich hab die Anfrage trotzdem drin gelassen. Kostet nichts, und falls sie
 irgendwann Daten nachliefern, läuft es ohne Änderung ein.
@@ -155,12 +155,46 @@ Für den Mai 2026: 31 Tage verglichen, 0 Abweichungen, größte Differenz
 0,005 kWh. Damit ist auch die Einheitenumrechnung von Wattstunden auf
 Kilowattstunden bestätigt, die sonst still falsch sein könnte.
 
+### Nullen sind keine Messwerte
+
 Ein Unterschied ist mir dabei aufgefallen: Für die 29 Umzugstage liefert
-die API glatte 0,00 kWh, die CSV lässt die Zeilen einfach weg. In über
-200 Tagen echter Messung hab ich aber nie exakt 0, der schlechteste Tag
-lag bei 0,12 kWh. Die Nullen sind also keine Messwerte, sondern die Art
-der Cloud zu sagen "nichts empfangen". Zwei Quellen, dieselbe Größe,
-unterschiedliche Kodierung für "keine Daten".
+die API glatte 0,00 kWh, die CSV lässt die Zeilen einfach weg. Zwei
+Quellen, dieselbe Größe, unterschiedliche Kodierung für "keine Daten".
+
+Dass die Nullen wirklich "nichts empfangen" heißen und nicht "nichts
+erzeugt", zeigt der Zeitraum vor der Inbetriebnahme. Die Anlage hängt
+seit dem 26.04.2025. Frage ich den April 2025 ab, stehen die Tage vom
+01. bis 25. auf exakt 0,000, und ausgerechnet am Installationstag selbst
+auf 0,007 kWh, ein paar Wattstunden vom Abend. Ein meldender
+Wechselrichter liefert immer irgendwas.
+
+Der Adapter lässt Tage mit exakt 0 deshalb komplett aus, statt sie als
+Messwert zu speichern. Damit verhält sich die API genau wie die CSV, die
+solche Zeilen gar nicht erst enthält, und die Umzugslücke bleibt im
+Lückenbericht sichtbar. Hätte ich die Nullen importiert, wäre die Lücke
+still verschwunden und jeder Februar-Mittelwert um 29 Nullen zu niedrig.
+Genau das ist mir einmal passiert, nach einem `down -v`.
+
+### Wie weit zurück geholt wird
+
+Steht noch keine Produktion in der Datenbank, holt die Pipeline alles ab
+`installation_date` aus `plant.yaml`. Danach reicht das übliche Fenster
+aus `default_days_back`, sonst liefe jeder Durchlauf über alle Monate.
+
+Nach einem `docker compose down -v` füllt sich der Bestand beim nächsten
+Lauf also von selbst wieder komplett, ohne dass ich eine CSV suchen muss.
+Knapp 40 Sekunden für anderthalb Jahre.
+
+### Gegenprobe über den Gesamtzähler
+
+`GET /api/hoymiles/realtime` liefert unter `gesamt_kwh` den Lebenszähler
+der Anlage. Der lag zuletzt bei 1110,8 kWh, die Summe über alle
+Tageswerte in der Datenbank bei 1110,774 kWh. Differenz drei Hundertstel,
+also Rundung.
+
+Das ist die beste Vollständigkeitsprüfung, die ich habe, und nebenbei der
+Beweis, dass die Anlage in den 29 Umzugstagen tatsächlich nichts erzeugt
+hat. Hätte sie, läge der Zähler über der Summe.
 
 ## Datenbank
 
@@ -294,12 +328,25 @@ Stück. Da war der Umzug.
 
 Auffinden lassen sich Lücken über `GET /api/quality/gaps`. Gesucht wird
 nur innerhalb des Zeitraums, für den überhaupt Produktionsdaten da sind.
-Alles danach fehlt nicht, sondern wurde einfach noch nicht exportiert.
+Alles danach fehlt nicht, sondern ist noch nicht gemeldet, der laufende
+und der vorige Tag stehen naturgemäß noch nicht in der Cloud.
 
-Die Aggregation legt für Lückentage trotzdem Zeilen an, weil ja
-Wetterdaten da sind. `production_kwh` bleibt NULL. Im Verlaufsdiagramm
-sieht man die Lücke als Unterbrechung, in der Heatmap als schraffierte
-Felder.
+Gesucht wird gegen den **Kalender**, nicht gegen die vorhandenen Zeilen.
+Das klingt nach Haarspalterei, ist aber der Unterschied zwischen 29 und
+3 gemeldeten Tagen. Zu einem Lückentag gibt es nämlich oft gar keine
+Zeile in `daily_facts`: Die Produktion wird ausgelassen, weil die API
+nur eine Null liefert, und Wetter holt der Backfill nur für Tage, an
+denen Produktion vorliegt. Kein Wetter, keine Zeile. Eine Suche über die
+vorhandenen Zeilen findet dann nur die Ränder.
+
+Aufgefallen ist mir das erst nach einem `down -v`, als der Bericht
+plötzlich 3 statt 29 Tage meldete. Vorher hatte die Lücke nur deshalb
+Zeilen, weil ich einmal manuell Wetter über den ganzen Zeitraum geholt
+hatte. Dafür gibt es jetzt einen Test.
+
+Im Verlaufsdiagramm sieht man die Lücke als Unterbrechung, in der Heatmap
+als schraffierte Felder. Die Heatmap läuft ohnehin über den Kalender und
+war deshalb nie betroffen.
 
 ### Noch was aufgefallen
 
@@ -311,12 +358,14 @@ schlagartig auf 0,79 hoch.
 Das ist genau nach der Umzugslücke, vermutlich war da erst ein Teil der
 Anlage wieder aufgebaut. Muss ich noch klären.
 
-Drei Tage haben außerdem einen Wirkungsgrad über 1, was physikalisch
-nicht geht: 03.01. mit 1,17, 12.01. mit 1,04, 12.03. mit 1,03. Alle drei
-sind trübe Tage mit sehr wenig Einstrahlung. Im Nenner steht ja keine
+Sechs Tage haben außerdem einen Wirkungsgrad über 1, was physikalisch
+nicht geht, verteilt über beide Jahre: 29.09. und 04.10.2025, 17.11.2025,
+03.01., 12.01. und 12.03.2026. Alle sechs sind trübe Tage mit sehr wenig
+Einstrahlung. Im Nenner steht ja keine
 Messung, sondern ein Modellwert von Open-Meteo, und bei diffusem Licht
 unter geschlossener Wolkendecke ist der ungenau. Kein Datenfehler also,
 aber ein Hinweis, dass der Wirkungsgrad in dem Bereich nichts taugt.
+Nachzusehen unter `GET /api/quality/report`.
 
 ## Backfill
 
@@ -445,10 +494,10 @@ curl -X POST "http://localhost:8008/api/ingest/all?start=2026-01-01&end=2026-08-
 - Tabelle mit den letzten 21 Tagen
 
 Die ersten beiden Kennzahlen sind absichtlich nebeneinander. Bei mir
-stehen da 250 und 219, und die Differenz von 31 ist genau die Geschichte:
-29 Umzugstage plus zwei Tage am aktuellen Rand, für die noch keine
-Produktion gemeldet ist. Vorher stand da mal "Stundenwerte",
-was nichts weiter war als die Zahl der Tage mal 24.
+stehen da 501 und 469, und die Differenz von 32 ist genau die Geschichte:
+29 Umzugstage, der Tag vor der Inbetriebnahme und zwei Tage am aktuellen
+Rand, für die noch keine Produktion gemeldet ist. Vorher stand da mal
+"Stundenwerte", was nichts weiter war als die Zahl der Tage mal 24.
 
 **Settings** (`/settings`) macht alles andere: CSV-Upload,
 Scheduler-Intervall, Quellen an und aus, Pipeline von Hand starten,
@@ -457,6 +506,14 @@ Wetterdaten nachladen, Lauf-Historie.
 Der Zeitraum im Verlaufsdiagramm zählt vom letzten vorhandenen Datenpunkt
 rückwärts, nicht von heute. Sonst sieht man bei "30 Tage" fast nur Tage
 ohne Produktion, weil die Wetterdaten weiter reichen als der CSV-Export.
+
+Alle Diagramm-Endpunkte liefern immer dieselbe Struktur, auch wenn sie
+nichts zu liefern haben. `/api/data/trends` gab bei leerer Datenbank mal
+`{"reihen": {}}` zurück, und weil das JavaScript fest auf
+`reihen.produktion.werte` zugreift, ist das Dashboard beim allerersten
+Start mit einem TypeError ausgestiegen. Charts leer, Knöpfe tot. Ist mir
+erst nach einem `down -v` aufgefallen, also genau in der Situation, die
+jemand sieht, der das Projekt zum ersten Mal startet.
 
 Chart.js liegt lokal unter `app/static/js/`. Kein CDN, damit das Ding
 offline läuft und keine Besucher-IPs bei Dritten landen. Aus demselben
@@ -486,7 +543,7 @@ mitcommitten und gut.
 docker compose exec app pytest -q
 ```
 
-23 Tests in vier Dateien, eine Sekunde. Läuft im Container, weil
+25 Tests in vier Dateien, eine Sekunde. Läuft im Container, weil
 `app/database.py` die Variable `DATABASE_URL` schon beim Import braucht.
 
 Bewusst wenige. Ich hab mir drei Bedingungen gesetzt: Es ist eine reine

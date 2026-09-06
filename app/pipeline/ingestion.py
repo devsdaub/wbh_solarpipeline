@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 from pandera.errors import SchemaError, SchemaErrors
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.adapters.hoymiles_api import HoymilesApiAdapter
@@ -139,6 +139,22 @@ def backfill_weather() -> dict:
     }
 
 
+def _produktion_startdatum(plant_id: int, tage_zurueck: int) -> date:
+    with SessionLocal() as session:
+        letzter = session.execute(
+            select(func.max(DailyFact.date))
+            .where(DailyFact.plant_id == plant_id)
+            .where(DailyFact.production_kwh.is_not(None))
+        ).scalar_one()
+
+    if letzter is None:
+        seit = load_plant_config().installation_date
+        logger.info("Keine Produktionsdaten vorhanden, hole ab %s", seit)
+        return seit
+
+    return letzter - timedelta(days=tage_zurueck)
+
+
 def ingest_production(
     start: date | None = None, end: date | None = None
 ) -> dict:
@@ -163,16 +179,17 @@ def ingest_production(
     else:
         end = min(end, gestern)
 
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
     if start is None:
-        start = end - timedelta(days=source.default_days_back)
+        start = _produktion_startdatum(plant_id, source.default_days_back)
 
     if start > end:
         return {"status": "uebersprungen", "quelle": "hoymiles_api",
                 "grund": "Kein abgeschlossener Tag im Zeitraum"}
 
     with SessionLocal() as session:
-        plant_id = _current_plant_id(session)
-
         adapter = HoymilesApiAdapter(
             load_plant_config(), source, plant_id, zugang
         )
