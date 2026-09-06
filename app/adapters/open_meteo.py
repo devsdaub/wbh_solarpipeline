@@ -7,6 +7,7 @@ import pandera.pandas as pa
 from app.adapters.base import SourceAdapter
 from app.config import PlantSettings, SourceSettings
 from app.retry import mit_wiederholung
+from app.schemas import validiere_nachsichtig
 
 
 class OpenMeteoAdapter(SourceAdapter):
@@ -50,4 +51,4 @@ class OpenMeteoAdapter(SourceAdapter):
         frame["time"] = pd.to_datetime(frame["time"]).dt.tz_localize("UTC")
         frame = frame.rename(columns=self.column_map)
         frame["plant_id"] = self.plant_id
-        return self.schema.validate(frame, lazy=True)
+        return validiere_nachsichtig(self.schema, frame, self.name)
