@@ -69,7 +69,7 @@ def ingest_source(
 
         try:
             frame = adapter.fetch(start, end)
-        except SchemaError as fehler:
+        except (SchemaError, SchemaErrors) as fehler:
             logger.error("Validierung fehlgeschlagen für %s: %s", name, fehler)
             return {"status": "ungueltig", "quelle": name,
                     "zeitraum": f"{start} bis {end}",
@@ -179,7 +179,7 @@ def ingest_production(
 
         try:
             frame = adapter.fetch(start, end)
-        except SchemaError as fehler:
+        except (SchemaError, SchemaErrors) as fehler:
             logger.error("Validierung fehlgeschlagen für hoymiles_api: %s", fehler)
             return {"status": "ungueltig", "quelle": "hoymiles_api",
                     "grund": str(fehler).splitlines()[0][:300]}

@@ -50,4 +50,4 @@ class OpenMeteoAdapter(SourceAdapter):
         frame["time"] = pd.to_datetime(frame["time"]).dt.tz_localize("UTC")
         frame = frame.rename(columns=self.column_map)
         frame["plant_id"] = self.plant_id
-        return self.schema.validate(frame)
+        return self.schema.validate(frame, lazy=True)
