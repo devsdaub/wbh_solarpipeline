@@ -50,8 +50,9 @@ def aggregate_hourly(frame: pd.DataFrame, plant_id: int) -> pd.DataFrame:
 
 def berechne_eq(frame: pd.DataFrame, module_wp: int) -> pd.DataFrame:
     """Ergänzt den Effizienzquotienten aus Produktion und Einstrahlung."""
-    nenner = frame["gti_kwh"] * (module_wp / 1000.0)
-    frame["eq"] = (frame["production_kwh"] / nenner).where(nenner > 0)
+    produktion = pd.to_numeric(frame["production_kwh"], errors="coerce")
+    nenner = pd.to_numeric(frame["gti_kwh"], errors="coerce") * (module_wp / 1000.0)
+    frame["eq"] = produktion / nenner.where(nenner > 0)
     return frame
 
 
