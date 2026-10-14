@@ -8,8 +8,8 @@ plant:
   panel:
     capacity_w: 800
     module_capacity_wp: 900
-    tilt_deg: 17
-    azimuth_deg: 203
+    tilt_deg: 72
+    azimuth_deg: 208
   economics:
     acquisition_cost_eur: 550
     subsidy_eur: 0
